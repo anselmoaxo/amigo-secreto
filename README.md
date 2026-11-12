@@ -1,36 +1,62 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🎁 Amigo Secreto
 
-## Getting Started
+App web para organizar amigo secreto: crie o grupo, convide pelo WhatsApp, faça o sorteio e cada pessoa vê só quem tirou.
 
-First, run the development server:
+**O que já tem (MVP)**
+
+- Login sem senha (link mágico por e-mail)
+- Criar grupo com data, local e faixa de valor
+- Convite por link e botão de WhatsApp
+- Lista de desejos com links
+- Sorteio em ciclo: ninguém tira a si mesmo, sem trocas diretas, com regras de "quem não pode tirar quem"
+- Tela "Ver quem eu tirei" (nem o organizador vê os pares)
+- E-mail e WhatsApp (Evolution API) quando o sorteio sai e lembrete na véspera da festa
+- Painel do organizador: remover pessoas, regras, refazer ou desfazer o sorteio
+
+**Stack:** Next.js 15 + TypeScript + Tailwind, Postgres (local ou [Neon](https://neon.tech)), Resend para e-mail, Vercel.
+
+## Como rodar no seu computador
+
+Precisa de Node 20+ e um Postgres rodando (ex.: `localhost:5432`, usuário e senha `postgres`).
+
+1. Crie o banco `amigo-secreto` (no pgAdmin, DBeaver ou `createdb -U postgres amigo-secreto`).
+2. Copie `.env.example` para `.env.local` (o padrão já aponta para `postgres:postgres@localhost:5432/amigo-secreto`).
+3. Rode:
 
 ```bash
+npm install
+npm run db:migrate
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+4. Abra http://localhost:3000 e peça o link de acesso. **Sem `RESEND_API_KEY`, o link de login aparece no terminal** onde o `npm run dev` está rodando: copie e abra no navegador.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Publicar (Neon + Vercel)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Crie um banco no Neon e copie a connection string (com `?sslmode=require`).
+2. Não precisa migrar à mão: na Vercel o build roda `scripts/migrate.mjs` antes do `next build` (script `vercel-build`).
+3. Importe o repositório na Vercel e cadastre as variáveis do `.env.example` (com `NEXT_PUBLIC_SITE_URL` no domínio final e `RESEND_API_KEY` preenchida, senão ninguém recebe o link de login).
+4. O lembrete diário roda sozinho pelo `vercel.json` (12h UTC, 9h de Brasília).
 
-## Learn More
+## WhatsApp (Evolution API)
 
-To learn more about Next.js, take a look at the following resources:
+Preencha `EVOLUTION_API_URL`, `EVOLUTION_API_KEY` e `EVOLUTION_INSTANCE` no `.env.local`. Quem informar o WhatsApp recebe:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- aviso quando o sorteio sai;
+- lembrete na véspera da festa.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+O lembrete é disparado pela rota `GET /api/cron/lembretes` com o cabeçalho `Authorization: Bearer <CRON_SECRET>`. Na Vercel isso roda sozinho (`vercel.json`). Fora da Vercel, crie no n8n um *Schedule Trigger* diário às 9h + *HTTP Request* para essa rota.
 
-## Deploy on Vercel
+## Testes
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npm test                                     # sorteio
+TEST_DATABASE_URL=postgres://... npm test    # + regras de acesso no banco (APAGA esse banco)
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Segurança
+
+- Login sem senha: link de uso único, válido por 30 minutos; guardamos só o hash do token e da sessão.
+- O link do e-mail abre uma página com botão "Entrar", para leitores de e-mail não gastarem o link sozinhos.
+- Toda leitura e escrita passa por `src/lib/queries.ts`, que confere se a pessoa é membro ou organizadora.
+- Cada participante só vê o próprio par do sorteio. Nem o organizador vê os outros.
