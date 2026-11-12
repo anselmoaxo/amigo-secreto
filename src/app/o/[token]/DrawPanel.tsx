@@ -94,12 +94,14 @@ export function DrawPanel({
             {revealed === 0 ? (
               <form action={action} className="space-y-2">
                 <input type="hidden" name="t" value={t} />
+                <input type="hidden" name="mode" value="redraw" />
                 <p>Ninguém viu o resultado ainda, então dá para sortear de novo sem problema. Todos recebem o aviso de novo.</p>
                 <Submit className="btn btn-primary btn-sm" pending="Sorteando…">Sortear de novo</Submit>
               </form>
             ) : (
               <form action={action} className="space-y-3 rounded-xl bg-cherry-soft p-4">
                 <input type="hidden" name="t" value={t} />
+                <input type="hidden" name="mode" value="redraw" />
                 <p className="font-bold">{revealed} {revealed === 1 ? "pessoa já viu" : "pessoas já viram"} quem tirou.</p>
                 <p>Se sortear de novo, todos recebem um resultado novo e quem já viu precisa esquecer o anterior. Pode gerar confusão, e alguém pode já ter comprado o presente.</p>
                 <label className="flex cursor-pointer items-start gap-3">

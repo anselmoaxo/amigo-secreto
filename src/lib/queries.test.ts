@@ -122,12 +122,13 @@ d("grupo com links individuais", () => {
   });
 
   it("refazer só com confirmação depois que alguém viu", async () => {
-    await q.runDraw(await group()); // ninguém viu: refaz direto
+    await expect(q.runDraw(await group())).rejects.toThrow("já foi feito"); // sem pedir novo sorteio, não refaz
+    await q.runDraw(await group(), { redraw: true }); // ninguém viu: refaz direto
     const bia = await as("Bia");
     await q.markSeen(bia.me);
     expect(await q.revealedCount(bia.group.id)).toBe(1);
-    await expect(q.runDraw(await group())).rejects.toThrow("Alguém já viu");
-    await q.runDraw(await group(), { force: true });
+    await expect(q.runDraw(await group(), { redraw: true })).rejects.toThrow("Alguém já viu");
+    await q.runDraw(await group(), { redraw: true, force: true });
     expect(await q.revealedCount(bia.group.id)).toBe(0);
   });
 

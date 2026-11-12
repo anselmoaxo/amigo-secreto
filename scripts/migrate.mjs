@@ -10,6 +10,12 @@ if (!url) {
   console[optional ? "warn" : "error"]("DATABASE_URL não definida (veja .env.example). Migrações não aplicadas.");
   process.exit(optional ? 0 : 1);
 }
+// Na Vercel, só o deploy de produção aplica migrações. O Preview pode apontar para o mesmo banco
+// da produção, e um branch em revisão não pode mudar o esquema do banco real antes do merge.
+if (process.env.VERCEL && process.env.VERCEL_ENV !== "production") {
+  console.warn(`Ambiente ${process.env.VERCEL_ENV ?? "desconhecido"} da Vercel: migrações não aplicadas (só a produção aplica).`);
+  process.exit(0);
+}
 const sql = postgres(url, { max: 1, onnotice: () => {} });
 const dir = path.join(process.cwd(), "db", "migrations");
 
