@@ -7,13 +7,9 @@ import { participantUrl, sendDrawNotice, sendPersonalInvite } from "@/lib/notify
 import {
   cleanGroup, cleanPerson, emptyGroup, validateGroup, validatePerson, type GroupInput,
 } from "@/lib/validation";
-import { bool, done, failed, guard, text, type ActionState } from "./state";
-
-async function admin(token: string) {
-  const g = await q.getGroupByAdminToken(token);
-  if (!g) throw new q.AppError("Este link de organizador não funciona mais. Recupere seus links pelo e-mail.");
-  return g;
-}
+import { adminFromToken as admin, limitIp, limitResource } from "@/lib/access";
+import { logError } from "@/lib/log";
+import { bool, done, failed, guard, knownError, text, type ActionState } from "./state";
 
 const refresh = (token: string) => revalidatePath(`/o/${token}`, "layout");
 const personFrom = (form: FormData) => ({
@@ -30,6 +26,7 @@ export async function addPersonAction(_: ActionState, form: FormData): Promise<A
     const id = await q.addParticipant(g, cleanPerson(person));
     let msg = `${person.name.trim()} foi adicionado.`;
     if (bool(form, "send") && (person.email || person.phone)) {
+      await limitIp("messagesPerIp");
       const p = await q.getParticipant(g, id);
       const channels = await sendPersonalInvite(p, g, await q.participantToken(id));
       if (channels.length) {
@@ -71,6 +68,8 @@ export async function resendInviteAction(_: ActionState, form: FormData): Promis
   return guard(async () => {
     const g = await admin(t);
     const p = await q.getParticipant(g, text(form, "id", 40));
+    await limitResource("resendPerParticipant", p.id, 1, `O link de ${p.display_name} já foi reenviado várias vezes na última hora. Tente mais tarde.`);
+    await limitIp("messagesPerIp");
     const channels = await sendPersonalInvite(p, g, await q.participantToken(p.id));
     if (!channels.length) return failed(`${p.display_name} não tem e-mail cadastrado. Use "Enviar pelo WhatsApp" ou cadastre um e-mail.`);
     await q.markInviteSent(p.id);
@@ -88,6 +87,7 @@ export type LinkResult = { ok: true; url: string; text: string; phone: string | 
 export async function personalLinkAction(t: string, id: string, regenerate = false): Promise<LinkResult> {
   try {
     const g = await admin(String(t));
+    await limitResource("linksPerGroup", g.id);
     const p = await q.getParticipant(g, String(id));
     const token = regenerate ? await q.regenerateParticipantToken(g, p.id) : await q.participantToken(p.id);
     await q.markInviteSent(p.id);
@@ -95,8 +95,9 @@ export async function personalLinkAction(t: string, id: string, regenerate = fal
     refresh(String(t));
     return { ok: true, url: participantUrl(token), text: personalInviteText(p.display_name, g, token), phone: p.phone };
   } catch (e) {
-    if (e instanceof q.AppError) return { ok: false, error: e.message };
-    console.error(e);
+    const known = knownError(e);
+    if (known) return { ok: false, error: known };
+    logError("link pessoal", e);
     return { ok: false, error: "Não conseguimos gerar o link. Tente de novo." };
   }
 }
@@ -141,18 +142,25 @@ export type DrawState = ActionState & { problem?: q.NamedProblem; needsForce?: b
 export async function drawAction(_: DrawState, form: FormData): Promise<DrawState> {
   const t = text(form, "t", 80);
   const force = bool(form, "force");
+  // "redraw" só vem do botão "Sortear de novo". Sem ele, um grupo já sorteado não é sorteado outra vez
+  // (clique duplo, duas abas, requisição repetida).
+  const redraw = text(form, "mode", 10) === "redraw";
   try {
     const g = await admin(t);
-    const { redraw } = await q.runDraw(g, { force });
+    // Cada sorteio manda aviso para todo mundo: limite por grupo para não virar disparo em massa.
+    await limitResource("drawPerGroup", g.id, 1, "Muitos sorteios seguidos neste grupo. Espere um pouco antes de sortear de novo.");
+    const { redraw: wasRedraw } = await q.runDraw(g, { force, redraw });
     // Avisa cada participante com o próprio link (o organizador não vê nenhum resultado).
     const people = await q.drawRecipients(g.id);
-    await Promise.allSettled(people.map(async (p) => sendDrawNotice(p, g, await q.participantToken(p.id), redraw)));
+    await Promise.allSettled(people.map(async (p) => sendDrawNotice(p, g, await q.participantToken(p.id), wasRedraw)));
     refresh(t);
-    return done(redraw ? "Sorteio refeito. Avisamos quem tem e-mail ou WhatsApp cadastrado." : "Sorteio feito! Avisamos quem tem e-mail ou WhatsApp cadastrado.");
+    return done(wasRedraw ? "Sorteio refeito. Avisamos quem tem e-mail ou WhatsApp cadastrado." : "Sorteio feito! Avisamos quem tem e-mail ou WhatsApp cadastrado.");
   } catch (e) {
     if (e instanceof q.DrawError) return { ...failed(e.message), problem: e.problem };
     if (e instanceof q.AppError) return { ...failed(e.message), needsForce: e.message.startsWith("Alguém já viu") };
-    console.error(e);
+    const known = knownError(e);
+    if (known) return failed(known);
+    logError("sorteio", e);
     return failed("Não conseguimos fazer o sorteio agora. Nada foi alterado; tente de novo.");
   }
 }
@@ -175,8 +183,9 @@ export async function pairsAction(t: string): Promise<PairsResult> {
     const g = await admin(String(t));
     return { ok: true, pairs: await q.listAllPairs(g) };
   } catch (e) {
-    if (e instanceof q.AppError) return { ok: false, error: e.message };
-    console.error(e);
+    const known = knownError(e);
+    if (known) return { ok: false, error: known };
+    logError("pares", e);
     return { ok: false, error: "Não conseguimos carregar os pares." };
   }
 }
@@ -197,8 +206,9 @@ export async function updateGroupAction(t: string, raw: GroupInput): Promise<Edi
     refresh(String(t));
     return { ok: true };
   } catch (e) {
-    if (e instanceof q.AppError) return { ok: false, error: e.message };
-    console.error(e);
+    const known = knownError(e);
+    if (known) return { ok: false, error: known };
+    logError("editar grupo", e);
     return { ok: false, error: "Não conseguimos salvar agora. Tente de novo." };
   }
 }

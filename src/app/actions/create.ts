@@ -2,6 +2,9 @@
 
 import * as q from "@/lib/queries";
 import { sendOrganizerLinks, sendPersonalInvite } from "@/lib/notify";
+import { limitIp } from "@/lib/access";
+import { logError } from "@/lib/log";
+import { knownError } from "./state";
 import {
   cleanGroup, cleanPerson, emptyGroup, validateGroup, validatePerson, type Errors, type GroupInput, type PersonInput,
 } from "@/lib/validation";
@@ -38,10 +41,14 @@ export async function createGroupAction(raw: { group: GroupInput; people: Person
   try {
     const group = cleanGroup(input);
     const persons = people.map(cleanPerson);
+    // Limites antes de gravar: criar grupos em série e disparar convites para listas de endereços é o abuso mais provável.
+    await limitIp("createPerIp");
+    const outgoing = (group.organizerEmail ? 1 : 0) + (raw.sendInvites === true ? persons.filter((p) => p.email || p.phone).length : 0);
+    if (outgoing) await limitIp("messagesPerIp", outgoing);
     const res = await q.createGroup(group, persons);
 
     if (group.organizerEmail) await sendOrganizerLinks(group.organizerEmail, { name: group.name }, res.adminToken, res.myToken);
-    if (raw.sendInvites) {
+    if (raw.sendInvites === true) {
       const g = await q.getGroupByAdminToken(res.adminToken);
       const list = await q.listParticipants(res.groupId);
       for (const p of list.filter((p) => !p.is_organizer && (p.email || p.phone))) {
@@ -51,8 +58,9 @@ export async function createGroupAction(raw: { group: GroupInput; people: Person
     }
     return { ok: true, adminToken: res.adminToken, myToken: res.myToken, groupName: group.name };
   } catch (e) {
-    if (e instanceof q.AppError) return { ok: false, error: e.message };
-    console.error(e);
+    const known = knownError(e);
+    if (known) return { ok: false, error: known };
+    logError("criar grupo", e);
     return { ok: false, error: "Não conseguimos criar o grupo agora. Seus dados continuam aqui; tente de novo em instantes." };
   }
 }
