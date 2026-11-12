@@ -5,7 +5,9 @@ import { addWishAction, contactAction, deleteWishAction, preferencesAction, resp
 import { ActionForm, Submit, TextField } from "@/components/ActionForm";
 import { GroupTag } from "@/components/GroupTag";
 import { RememberLink } from "@/components/RememberLink";
+import { LinkBadge, LinkWarning } from "@/components/LinkKind";
 import { Empty, Notice, Section } from "@/components/ui";
+import { whatsappServerEnabled } from "@/lib/notify";
 import { formatDate, formatPhone } from "@/lib/format";
 import * as q from "@/lib/queries";
 import { Reveal } from "./Reveal";
@@ -35,7 +37,7 @@ export default async function ParticipantPage({
       {bemvindo && (
         <Notice tone="success" title="Você entrou no grupo!">
           Esta página é o seu link pessoal. Ela ficou salva em Meus grupos neste aparelho
-          {me.email ? " e mandamos o link para o seu e-mail" : ""}. Não repasse o endereço.
+          {me.email ? " e mandamos o link para o seu e-mail" : ""}. Quem tiver este endereço vê o seu resultado, então não repasse.
         </Notice>
       )}
 
@@ -101,7 +103,8 @@ export default async function ParticipantPage({
         </Section>
       )}
 
-      <Section id="contato" title="Avisos" intro="Opcional. Usamos só para mandar o aviso do sorteio, o lembrete na véspera e seus links se você perder.">
+      <Section id="contato" title="Avisos"
+        intro={`Opcional. Usamos só para mandar o aviso do sorteio, o lembrete na véspera da festa${group.event_date ? "" : " (quando ela tiver data)"} e seus links se você perder.${whatsappServerEnabled() ? "" : " Por enquanto, os avisos vão só por e-mail."}`}>
         <ActionForm action={contactAction} hidden={hidden} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <TextField name="email" id="c-email" label="E-mail" optional type="email" inputMode="email" autoComplete="email" defaultValue={me.email ?? ""} />
@@ -111,10 +114,13 @@ export default async function ParticipantPage({
         </ActionForm>
       </Section>
 
-      <aside className="rounded-xl bg-paper-deep/60 p-4 text-[0.95rem] text-muted">
+      <aside aria-label="Sobre este link" className="space-y-2 rounded-xl bg-paper-deep/60 p-4 text-[0.95rem] text-muted">
+        <LinkBadge kind="participant" />
+        <LinkWarning kind="participant" />
         <p>
-          <strong className="text-ink">Este link é só seu.</strong> Quem tiver o link vê o seu resultado, então não repasse.
           Ele ficou salvo neste aparelho em <Link href="/meus-grupos" className="link">Meus grupos</Link>.{" "}
+          {me.email ? "Se perder, peça de novo em " : "Para recuperar depois por e-mail, cadastre seu e-mail em Avisos acima e use "}
+          <Link href="/recuperar" className="link">Perdi meu link</Link>.{" "}
           <Link href="/duvidas#privacidade" className="link">Como usamos seus dados</Link>.
         </p>
       </aside>

@@ -15,6 +15,10 @@
   --color-ink: #1e2a24;
   --color-muted: #55665c;
   --color-line: #cfd9d1;
+  /* Borda de campos e interruptores: contraste de 3:1 com o fundo (WCAG 1.4.11). */
+  --color-line-strong: #7a8a80;
+  /* Dourado escuro para o contorno de foco: 3,8:1 sobre o papel. */
+  --color-focus: #a86f0c;
   --color-cherry: #c21f36;
   --color-cherry-dark: #9e1729;
   --color-cherry-soft: #fbe6e8;
@@ -36,10 +40,14 @@ body {
 }
 
 :focus-visible {
-  outline: 3px solid var(--color-gold);
+  outline: 3px solid var(--color-focus);
   outline-offset: 2px;
   border-radius: 6px;
 }
+
+/* Âncoras (#como, #convite) não ficam escondidas sob nada e respeitam movimento reduzido. */
+html { scroll-padding-top: 1rem; }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
 
 ::selection { background: var(--color-gold-soft); }
 
@@ -68,11 +76,14 @@ body {
 
   .input {
     width: 100%; min-height: 3rem; padding: .65rem .9rem; border-radius: .75rem;
-    background: #fff; border: 1.5px solid var(--color-line); color: var(--color-ink);
+    background: #fff; border: 1.5px solid var(--color-line-strong); color: var(--color-ink);
   }
-  .input:hover { border-color: #a9b8ad; }
-  .input:focus { outline: none; border-color: var(--color-pine); box-shadow: 0 0 0 3px var(--color-pine-soft); }
-  .input[aria-invalid="true"] { border-color: var(--color-cherry); }
+  .input:hover { border-color: var(--color-pine); }
+  /* Foco: borda verde mais grossa + contorno dourado escuro, visível sobre qualquer fundo. */
+  .input:focus { outline: none; border-color: var(--color-pine); box-shadow: 0 0 0 1px var(--color-pine); }
+  .input:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; }
+  .input[aria-invalid="true"] { border-color: var(--color-cherry); border-width: 2px; }
+  .input:disabled { background: var(--color-paper); color: var(--color-muted); cursor: not-allowed; }
   textarea.input { min-height: 6rem; resize: vertical; }
 
   /* Folha: a superfície principal de conteúdo. Uma só, sem sombras empilhadas. */

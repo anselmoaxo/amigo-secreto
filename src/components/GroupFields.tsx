@@ -6,7 +6,7 @@ import { OCCASIONS, type Errors, type GroupInput } from "@/lib/validation";
 type Props = { value: GroupInput; errors: Errors; set: <K extends keyof GroupInput>(k: K, v: GroupInput[K]) => void };
 
 /** Campos do grupo, divididos nos mesmos blocos da criação e da edição. */
-export function BasicsFields({ value: v, errors: e, set, editing }: Props & { editing?: boolean }) {
+export function BasicsFields({ value: v, errors: e, set, editing, whatsapp = true }: Props & { editing?: boolean; whatsapp?: boolean }) {
   return (
     <div className="space-y-5">
       <Field id="name" label="Nome do grupo" error={e.name} hint="Como o grupo vai aparecer no convite.">
@@ -21,7 +21,7 @@ export function BasicsFields({ value: v, errors: e, set, editing }: Props & { ed
             <label key={o.value} className="cursor-pointer">
               <input type="radio" name="occasion" value={o.value} checked={v.occasion === o.value}
                 onChange={() => set("occasion", o.value)} className="peer sr-only" />
-              <span className="inline-flex min-h-11 items-center rounded-full border-[1.5px] border-line bg-white px-4 font-semibold text-ink peer-checked:border-pine peer-checked:bg-pine peer-checked:text-white peer-focus-visible:outline-3 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-gold">
+              <span className="inline-flex min-h-11 items-center rounded-full border-[1.5px] border-line-strong bg-white px-4 font-semibold text-ink peer-checked:border-pine peer-checked:bg-pine peer-checked:text-white peer-focus-visible:outline-3 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-focus">
                 {o.label}
               </span>
             </label>
@@ -37,16 +37,44 @@ export function BasicsFields({ value: v, errors: e, set, editing }: Props & { ed
       <Switch id="organizerJoins" label="Eu também participo do sorteio" hint={editing ? "Só dá para mudar antes do sorteio." : "Desligue se você só vai organizar."}
         checked={v.organizerJoins} onChange={(c) => set("organizerJoins", c)} />
 
+      <ContactFields value={v} errors={e} set={set} editing={editing} whatsapp={whatsapp} />
+    </div>
+  );
+}
+
+/**
+ * Contatos do organizador, opcionais, numa área secundária.
+ * O WhatsApp só aparece quando o envio pelo site está ligado e o organizador participa:
+ * os avisos do sorteio e o lembrete vão para quem está no sorteio.
+ */
+function ContactFields({ value: v, errors: e, set, editing, whatsapp }: Props & { editing?: boolean; whatsapp: boolean }) {
+  const showPhone = whatsapp && v.organizerJoins;
+  return (
+    <div role="group" aria-labelledby="contatos-titulo" className="space-y-4 rounded-xl border border-line bg-paper/70 p-4 sm:p-5">
+      <div>
+        <p id="contatos-titulo" className="font-bold">Seus contatos <span className="font-normal text-muted">(opcionais)</span></p>
+        <p className="text-[0.95rem] text-muted">
+          {editing
+            ? "Usamos só para mandar os links deste grupo e os avisos."
+            : "Não precisa criar conta. Os contatos servem só para mandar os links deste grupo e os avisos."}
+        </p>
+      </div>
+
       <Field id="organizerEmail" label="Seu e-mail" optional error={e.organizerEmail}
-        hint="Mandamos para ele o link do painel, para você não perder.">
+        hint={editing
+          ? "Com ele, se você perder o link do painel, recebe de novo em “Perdi meu link”."
+          : "Recomendado. Mandamos o link do seu painel para este e-mail e, se você perder, dá para pedir de novo em “Perdi meu link”. Sem e-mail, o painel fica salvo só neste aparelho."}>
         <input {...fieldProps("organizerEmail", e.organizerEmail, true)} className="input" type="email" inputMode="email"
-          autoComplete="email" value={v.organizerEmail} onChange={(x) => set("organizerEmail", x.target.value)} />
+          autoComplete="email" autoCapitalize="off" spellCheck={false} value={v.organizerEmail} onChange={(x) => set("organizerEmail", x.target.value)} />
       </Field>
 
-      <Field id="organizerPhone" label="Seu WhatsApp" optional error={e.organizerPhone} hint="Para avisos do sorteio e lembrete na véspera.">
-        <input {...fieldProps("organizerPhone", e.organizerPhone, true)} className="input" type="tel" inputMode="tel"
-          autoComplete="tel" placeholder="(11) 98765-4321" value={v.organizerPhone} onChange={(x) => set("organizerPhone", x.target.value)} />
-      </Field>
+      {showPhone && (
+        <Field id="organizerPhone" label="Seu WhatsApp" optional error={e.organizerPhone}
+          hint="Você recebe por WhatsApp o aviso quando o sorteio sair e um lembrete na véspera da festa, se ela tiver data.">
+          <input {...fieldProps("organizerPhone", e.organizerPhone, true)} className="input" type="tel" inputMode="tel"
+            autoComplete="tel" placeholder="(11) 98765-4321" value={v.organizerPhone} onChange={(x) => set("organizerPhone", x.target.value)} />
+        </Field>
+      )}
     </div>
   );
 }

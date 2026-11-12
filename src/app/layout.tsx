@@ -32,7 +32,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <nav aria-label="Principal" className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3">
             <Link href="/" className="flex items-center gap-2 rounded-md text-base font-bold text-pine sm:text-lg">
               <Logo className="h-8 w-8 shrink-0" />
-              <span className="whitespace-nowrap">Amigo Secreto</span>
+              <span className="whitespace-nowrap max-[359px]:sr-only">Amigo Secreto</span>
             </Link>
             <div className="flex items-center text-[0.95rem] font-semibold">
               <Link href="/meus-grupos" className="whitespace-nowrap rounded-full px-2.5 py-2 text-pine hover:bg-pine-soft sm:px-3">Meus grupos</Link>

@@ -5,7 +5,9 @@ import { addPersonAction, addRuleAction, deleteGroupAction, deleteRuleAction } f
 import { ActionForm, Submit, TextField } from "@/components/ActionForm";
 import { GroupTag } from "@/components/GroupTag";
 import { RememberLink } from "@/components/RememberLink";
+import { LinkBadge, LinkWarning } from "@/components/LinkKind";
 import { CopyButton, ShareInvite } from "@/components/Share";
+import { whatsappUrl } from "@/lib/links";
 import { Empty, Notice, Section } from "@/components/ui";
 import { formatDate } from "@/lib/format";
 import { adminUrl, emailEnabled, groupInviteText, inviteUrl, participantUrl } from "@/lib/notify";
@@ -68,13 +70,27 @@ export default async function OrganizerPage({
       {novo && (
         <div className="sheet space-y-4 border-pine/30 p-5 sm:p-6">
           <h2 className="text-xl font-bold text-pine">Grupo criado! Guarde este painel.</h2>
+          <LinkBadge kind="admin" />
           <p>
             Este endereço é o seu painel de organizador. Ele ficou salvo neste aparelho em <Link href="/meus-grupos" className="link">Meus grupos</Link>
             {group.organizer_email && emailEnabled() ? <> e também foi para <strong>{group.organizer_email}</strong></> : null}.
-            Não compartilhe: quem tiver este link consegue mudar o grupo.
           </p>
+          <LinkWarning kind="admin" />
+          {!group.organizer_email && (
+            <Notice tone="warn" title="Antes de sair, guarde o link do painel.">
+              Você não informou e-mail, então não dá para recuperar este painel em “Perdi meu link”.
+              Copie o link e mande para você mesmo no WhatsApp, ou salve nos favoritos do navegador.
+              Se preferir, <Link href={`/o/${token}/editar`} className="link">adicione um e-mail</Link>.
+            </Notice>
+          )}
           <div className="flex flex-wrap gap-2">
             <CopyButton text={adminUrl(token)} label="Copiar link do painel" done="Link do painel copiado" className="btn btn-pine btn-sm" />
+            {!group.organizer_email && (
+              <a className="btn btn-whats btn-sm" target="_blank" rel="noreferrer"
+                href={whatsappUrl(`Meu painel do amigo secreto "${group.name}" (não repasse): ${adminUrl(token)}`)}>
+                Mandar para mim no WhatsApp
+              </a>
+            )}
             {myLink && <a href={myLink} className="btn btn-ghost btn-sm">Abrir minha página de participante</a>}
           </div>
         </div>
@@ -107,7 +123,8 @@ export default async function OrganizerPage({
       </section>
 
       {canChange && (
-        <Section id="convidar" title="Convidar pelo grupo" intro="Quem abrir este convite escreve o próprio nome e recebe um link só seu.">
+        <Section id="convidar" title="Convidar pelo grupo" intro="Quem abrir este convite escreve o próprio nome e recebe um link pessoal, só dele.">
+          <LinkBadge kind="invite" />
           <ShareInvite url={inviteUrl(group.invite_code)} message={groupInviteText(group)} />
           {group.rsvp_deadline && (
             <p className="text-[0.95rem] text-muted">O convite aceita gente nova até {formatDate(group.rsvp_deadline)}.</p>

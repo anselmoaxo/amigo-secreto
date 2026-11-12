@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { GroupTag } from "@/components/GroupTag";
 import { Notice } from "@/components/ui";
+import { whatsappServerEnabled } from "@/lib/notify";
 import * as q from "@/lib/queries";
 import { JoinForm } from "./JoinForm";
 
@@ -37,8 +38,8 @@ export default async function InvitePage({ params }: { params: Promise<{ code: s
       ) : (
         <div className="sheet p-5 sm:p-7">
           <h2 className="text-xl font-bold text-pine">Entrar no grupo</h2>
-          <p className="mt-1 text-muted">Você recebe um link só seu para ver quem tirou. Não precisa criar conta.</p>
-          <JoinForm code={code} groupName={invite.name} />
+          <p className="mt-1 text-muted">Você recebe um link pessoal, só seu, para ver quem tirou. Não precisa criar conta.</p>
+          <JoinForm code={code} groupName={invite.name} whatsapp={whatsappServerEnabled()} />
           <p className="mt-5 text-[0.95rem] text-muted">
             Já entrou antes? Abra <Link href="/meus-grupos" className="link">Meus grupos</Link> ou <Link href="/recuperar" className="link">receba seus links por e-mail</Link>.
           </p>

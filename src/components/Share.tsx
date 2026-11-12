@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { whatsappUrl } from "@/lib/links";
+
 
 export async function copyText(text: string) {
   try {
@@ -21,8 +23,7 @@ export async function copyText(text: string) {
   }
 }
 
-export const whatsappUrl = (text: string, phone?: string | null) =>
-  `https://wa.me/${phone ?? ""}?text=${encodeURIComponent(text)}`;
+export { whatsappUrl };
 
 export function CopyButton({ text, label = "Copiar", done = "Copiado", className = "btn btn-ghost btn-sm" }: { text: string; label?: string; done?: string; className?: string }) {
   const [state, setState] = useState<"idle" | "ok" | "fail">("idle");
