@@ -1,11 +1,16 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
-import { Atkinson_Hyperlegible_Next, Shantell_Sans } from "next/font/google";
+import localFont from "next/font/local";
 import { Logo } from "@/components/Logo";
 import "./globals.css";
 
-const atkinson = Atkinson_Hyperlegible_Next({ subsets: ["latin"], variable: "--font-atkinson", display: "swap", adjustFontFallback: false });
-const shantell = Shantell_Sans({ subsets: ["latin"], variable: "--font-shantell", display: "swap", weight: ["500", "700"] });
+// Fontes salvas no repositório (subconjunto latino, licença OFL): o build não depende do Google Fonts.
+const atkinson = localFont({
+  src: "./fonts/atkinson-hyperlegible-next.woff2", weight: "200 800", variable: "--font-atkinson", display: "swap", adjustFontFallback: false,
+});
+const shantell = localFont({
+  src: "./fonts/shantell-sans.woff2", weight: "300 800", variable: "--font-shantell", display: "swap",
+});
 
 export const metadata: Metadata = {
   title: { default: "Amigo Secreto: organize o sorteio pelo celular", template: "%s · Amigo Secreto" },
