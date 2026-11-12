@@ -96,7 +96,7 @@ antes de um CAPTCHA (que exigiria alternativa acessível).
 - **Por que não foi bloqueado:** repassar o link pelo WhatsApp do organizador é o fluxo principal para quem não tem e-mail. Sem contas, quem tem o link tem o acesso.
 - **Correção parcial (detecção):** ao abrir o papelzinho, o aparelho fica registrado (cookie aleatório `HttpOnly`, `SameSite=Strict`, só em `/p`; no banco fica só um hash). Se o mesmo papelzinho for aberto depois em outro aparelho, o participante vê o aviso "já tinha sido aberto em outro aparelho em …".
 - **Teste:** 3b.
-- **Pendente:** decidir se, depois do sorteio, os links passam a ser trocados e entregues só pelo servidor (e-mail/WhatsApp), sem o organizador poder copiá-los.
+- **Decisão (Anselmo, 12/11/2026):** manter o organizador copiando e repassando links, com o aviso ao participante. Risco aceito: quem repassa o link consegue abri-lo antes; a pessoa fica sabendo pelo aviso. Alternativa registrada para o futuro: trocar os links no sorteio e entregá-los só pelo servidor.
 
 ### V8. Baixa: faltavam cabeçalhos de segurança
 - **Correção (`next.config.ts`):** CSP só com recursos próprios (nenhum script de terceiros), `frame-ancestors 'none'` + `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy: no-referrer` (além da meta que já existia), HSTS, `Permissions-Policy`, `X-Powered-By` removido; `/o`, `/p`, `/g`, `/recuperar` e `/meus-grupos` com `Cache-Control: private, no-store` e `X-Robots-Tag: noindex`. Limite de payload das Server Actions em 300 KB.
