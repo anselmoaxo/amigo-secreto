@@ -1,12 +1,9 @@
 import { redirect } from "next/navigation";
-import { getUser } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/auth";
+import { getInvite } from "@/lib/queries";
+import { sql } from "@/lib/db";
 import { formatDate, priceRange } from "@/lib/format";
 import { joinGroup } from "../../actions";
-
-type Invite = {
-  id: string; name: string; event_date: string | null; location: string | null;
-  min_value: number | null; max_value: number | null; status: string; members: number;
-};
 
 export default async function InvitePage({
   params,
@@ -17,15 +14,12 @@ export default async function InvitePage({
 }) {
   const { code } = await params;
   const { erro } = await searchParams;
-  const { supabase, user } = await getUser();
-  if (!user) redirect(`/login?next=/g/${code}`);
+  const user = await requireUser(`/g/${encodeURIComponent(code)}`);
 
-  const { data } = await supabase.rpc("get_invite", { p_code: code });
-  const invite = (data as Invite[] | null)?.[0];
+  const invite = await getInvite(code);
   if (!invite) return <p className="card">Convite não encontrado. Confira o link com quem te convidou.</p>;
 
-  const { data: me } = await supabase
-    .from("participants").select("id").eq("group_id", invite.id).eq("user_id", user.id).maybeSingle();
+  const [me] = await sql`select 1 from participants where group_id = ${invite.id} and user_id = ${user.id}`;
   if (me) redirect(`/grupos/${invite.id}`);
 
   const price = priceRange(invite.min_value, invite.max_value);

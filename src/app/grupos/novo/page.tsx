@@ -1,10 +1,8 @@
-import { redirect } from "next/navigation";
-import { getUser } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/auth";
 import { createGroup } from "../../actions";
 
 export default async function NewGroup({ searchParams }: { searchParams: Promise<{ erro?: string }> }) {
-  const { user } = await getUser();
-  if (!user) redirect("/login?next=/grupos/novo");
+  await requireUser("/grupos/novo");
   const { erro } = await searchParams;
 
   return (

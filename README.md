@@ -13,36 +13,41 @@ App web para organizar amigo secreto: crie o grupo, convide pelo WhatsApp, faça
 - E-mail quando o sorteio sai e lembrete na véspera da festa
 - Painel do organizador: remover pessoas, regras, refazer ou desfazer o sorteio
 
-**Stack:** Next.js 15 + TypeScript + Tailwind, Supabase (Postgres, Auth, RLS), Resend, Vercel.
+**Stack:** Next.js 15 + TypeScript + Tailwind, Postgres (local ou [Neon](https://neon.tech)), Resend para e-mail, Vercel.
 
-## Como rodar
+## Como rodar no seu computador
 
-1. Crie um projeto em [supabase.com](https://supabase.com) (plano grátis).
-2. No **SQL Editor**, rode `supabase/migrations/0001_init.sql`.
-3. Em **Authentication > URL Configuration**, coloque o endereço do app em *Site URL* e adicione `http://localhost:3000/auth/callback` (e o de produção) em *Redirect URLs*.
-4. Copie `.env.example` para `.env.local` e preencha com as chaves de **Project Settings > API**.
-5. Rode:
+Precisa de Node 20+ e um Postgres rodando (ex.: `localhost:5432`, usuário e senha `postgres`).
+
+1. Crie o banco `amigo-secreto` (no pgAdmin, DBeaver ou `createdb -U postgres amigo-secreto`).
+2. Copie `.env.example` para `.env.local` (o padrão já aponta para `postgres:postgres@localhost:5432/amigo-secreto`).
+3. Rode:
 
 ```bash
 npm install
+npm run db:migrate
 npm run dev
 ```
 
-Abra http://localhost:3000.
+4. Abra http://localhost:3000 e peça o link de acesso. **Sem `RESEND_API_KEY`, o link de login aparece no terminal** onde o `npm run dev` está rodando: copie e abra no navegador.
 
-## Publicar na Vercel
+## Publicar (Neon + Vercel)
 
-1. Importe o repositório na Vercel.
-2. Cadastre as mesmas variáveis do `.env.example` (com `NEXT_PUBLIC_SITE_URL` apontando para o domínio final).
-3. O lembrete diário roda sozinho pelo `vercel.json` (12h UTC, 9h de Brasília).
+1. Crie um banco no Neon e copie a connection string (com `?sslmode=require`).
+2. Rode `DATABASE_URL="<string do Neon>" npm run db:migrate`.
+3. Importe o repositório na Vercel e cadastre as variáveis do `.env.example` (com `NEXT_PUBLIC_SITE_URL` no domínio final e `RESEND_API_KEY` preenchida, senão ninguém recebe o link de login).
+4. O lembrete diário roda sozinho pelo `vercel.json` (12h UTC, 9h de Brasília).
 
 ## Testes
 
 ```bash
-npm test
+npm test                                     # sorteio
+TEST_DATABASE_URL=postgres://... npm test    # + regras de acesso no banco (APAGA esse banco)
 ```
 
 ## Segurança
 
-- Todas as tabelas têm RLS. Cada participante só lê o próprio par do sorteio.
-- O sorteio é calculado no servidor e gravado com a chave de serviço (`SUPABASE_SERVICE_ROLE_KEY`), que nunca vai para o navegador.
+- Login sem senha: link de uso único, válido por 30 minutos; guardamos só o hash do token e da sessão.
+- O link do e-mail abre uma página com botão "Entrar", para leitores de e-mail não gastarem o link sozinhos.
+- Toda leitura e escrita passa por `src/lib/queries.ts`, que confere se a pessoa é membro ou organizadora.
+- Cada participante só vê o próprio par do sorteio. Nem o organizador vê os outros.

@@ -1,14 +1,14 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
-import { getUser } from "@/lib/supabase/server";
+import { notFound } from "next/navigation";
+import { requireUser } from "@/lib/auth";
+import * as q from "@/lib/queries";
+import type { Wish } from "@/lib/queries";
 import { formatDate, priceRange, siteUrl } from "@/lib/format";
 import { ShareInvite } from "@/components/ShareInvite";
 import { Reveal } from "@/components/Reveal";
 import {
   addExclusion, addWish, deleteExclusion, deleteWish, removeParticipant, reopenGroup, runDraw,
 } from "../../actions";
-
-type Wish = { id: string; description: string; link: string | null };
 
 export default async function GroupPage({
   params,
@@ -19,37 +19,21 @@ export default async function GroupPage({
 }) {
   const { id } = await params;
   const { erro } = await searchParams;
-  const { supabase, user } = await getUser();
-  if (!user) redirect(`/login?next=/grupos/${id}`);
+  const user = await requireUser(`/grupos/${id}`);
 
-  const { data: group } = await supabase.from("groups").select("*").eq("id", id).maybeSingle();
+  const group = await q.getGroupForMember(id, user.id);
   if (!group) notFound();
 
-  const { data: people = [] } = await supabase
-    .from("participants").select("id, display_name, user_id").eq("group_id", id).order("joined_at");
-  const me = people!.find((p) => p.user_id === user.id);
   const isOwner = group.owner_id === user.id;
   const drawn = group.status === "drawn";
-  const nameOf = (pid: string) => people!.find((p) => p.id === pid)?.display_name ?? "?";
-
-  const { data: myWishes } = me
-    ? await supabase.from("wishes").select("id, description, link").eq("participant_id", me.id).order("created_at")
-    : { data: [] as Wish[] };
-
-  let receiver: { name: string; wishes: Wish[] } | null = null;
-  if (drawn && me) {
-    const { data: a } = await supabase
-      .from("assignments").select("receiver_id").eq("group_id", id).eq("giver_id", me.id).maybeSingle();
-    if (a) {
-      const { data: w } = await supabase
-        .from("wishes").select("id, description, link").eq("participant_id", a.receiver_id).order("created_at");
-      receiver = { name: nameOf(a.receiver_id), wishes: w ?? [] };
-    }
-  }
-
-  const { data: rules } = isOwner
-    ? await supabase.from("exclusions").select("id, participant_a, participant_b").eq("group_id", id)
-    : { data: [] };
+  const [people, myWishes, receiver, rules] = await Promise.all([
+    q.listParticipants(id),
+    q.listWishes(group.me_id),
+    drawn ? q.getMyMatch(id, user.id) : null,
+    isOwner ? q.listExclusions(id, user.id) : [],
+  ]);
+  const me = people.find((p) => p.id === group.me_id);
+  const nameOf = (pid: string) => people.find((p) => p.id === pid)?.display_name ?? "?";
 
   const price = priceRange(group.min_value, group.max_value);
   const inviteUrl = `${siteUrl()}/g/${group.invite_code}`;
@@ -90,7 +74,7 @@ export default async function GroupPage({
         <section className="card space-y-3">
           <h2 className="font-semibold">Minha lista de desejos</h2>
           <ul className="space-y-2">
-            {myWishes?.map((w) => (
+            {myWishes.map((w) => (
               <li key={w.id} className="flex items-start justify-between gap-2 text-sm">
                 <WishItem wish={w} />
                 <form action={deleteWish}>
@@ -112,9 +96,9 @@ export default async function GroupPage({
 
       {/* Participantes */}
       <section className="card space-y-3">
-        <h2 className="font-semibold">Participantes ({people!.length})</h2>
+        <h2 className="font-semibold">Participantes ({people.length})</h2>
         <ul className="divide-y divide-stone-100">
-          {people!.map((p) => (
+          {people.map((p) => (
             <li key={p.id} className="flex items-center justify-between py-2 text-sm">
               <span>
                 {p.display_name}
@@ -148,7 +132,7 @@ export default async function GroupPage({
             <h3 className="text-sm font-semibold">Quem não pode tirar quem</h3>
             <p className="text-xs text-stone-500">Ex.: casais. Vale nos dois sentidos.</p>
             <ul className="space-y-1 text-sm">
-              {rules?.map((r) => (
+              {rules.map((r) => (
                 <li key={r.id} className="flex items-center justify-between">
                   <span>{nameOf(r.participant_a)} ✕ {nameOf(r.participant_b)}</span>
                   {!drawn && (
@@ -161,12 +145,12 @@ export default async function GroupPage({
                 </li>
               ))}
             </ul>
-            {!drawn && people!.length >= 2 && (
+            {!drawn && people.length >= 2 && (
               <form action={addExclusion} className="flex flex-wrap gap-2">
                 <input type="hidden" name="group_id" value={id} />
-                <PersonSelect name="a" people={people!} />
-                <PersonSelect name="b" people={people!} />
-                <button className="btn-secondary">Adicionar</button>
+                <PersonSelect name="a" people={people} />
+                <PersonSelect name="b" people={people} />
+                <button className="btn-secondary">Adicionar regra</button>
               </form>
             )}
           </div>
@@ -174,7 +158,7 @@ export default async function GroupPage({
           <div className="flex flex-wrap gap-2 border-t border-stone-100 pt-4">
             <form action={runDraw}>
               <input type="hidden" name="group_id" value={id} />
-              <button className="btn" disabled={people!.length < 3}>
+              <button className="btn" disabled={people.length < 3}>
                 {drawn ? "Refazer sorteio" : "Fazer o sorteio"}
               </button>
             </form>
@@ -185,7 +169,7 @@ export default async function GroupPage({
               </form>
             )}
           </div>
-          {people!.length < 3 && <p className="text-xs text-stone-500">Precisa de pelo menos 3 pessoas.</p>}
+          {people.length < 3 && <p className="text-xs text-stone-500">Precisa de pelo menos 3 pessoas.</p>}
           {drawn && (
             <p className="text-xs text-stone-500">
               Refazer sorteia de novo e manda novo e-mail para todos. Nem você vê quem tirou quem.

@@ -1,16 +1,12 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { getUser } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/auth";
+import { listMyGroups } from "@/lib/queries";
 import { formatDate } from "@/lib/format";
+import { signOut } from "../actions";
 
 export default async function MyGroups() {
-  const { supabase, user } = await getUser();
-  if (!user) redirect("/login?next=/grupos");
-
-  const { data: groups } = await supabase
-    .from("groups")
-    .select("id, name, event_date, status, owner_id")
-    .order("created_at", { ascending: false });
+  const user = await requireUser("/grupos");
+  const groups = await listMyGroups(user.id);
 
   return (
     <div className="space-y-4">
@@ -39,7 +35,7 @@ export default async function MyGroups() {
           </li>
         ))}
       </ul>
-      <form action="/auth/sair" method="post">
+      <form action={signOut}>
         <button className="text-sm text-stone-500 underline">Sair ({user.email})</button>
       </form>
     </div>
