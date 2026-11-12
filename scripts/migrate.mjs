@@ -5,8 +5,10 @@ import postgres from "postgres";
 
 const url = process.env.DATABASE_URL;
 if (!url) {
-  console.error("Defina DATABASE_URL (veja .env.example)");
-  process.exit(1);
+  // No build da Vercel (--se-configurado), sem banco só avisamos e seguimos.
+  const optional = process.argv.includes("--se-configurado");
+  console[optional ? "warn" : "error"]("DATABASE_URL não definida (veja .env.example). Migrações não aplicadas.");
+  process.exit(optional ? 0 : 1);
 }
 const sql = postgres(url, { max: 1, onnotice: () => {} });
 const dir = path.join(process.cwd(), "db", "migrations");

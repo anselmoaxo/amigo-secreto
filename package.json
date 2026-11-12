@@ -9,7 +9,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "db:migrate": "node --env-file-if-exists=.env.local scripts/migrate.mjs",
-    "vercel-build": "node scripts/migrate.mjs && next build"
+    "vercel-build": "node scripts/migrate.mjs --se-configurado && next build"
   },
   "dependencies": {
     "next": "15.5.4",
