@@ -34,7 +34,7 @@ npm run dev
 ## Publicar (Neon + Vercel)
 
 1. Crie um banco no Neon e copie a connection string (com `?sslmode=require`).
-2. Rode `DATABASE_URL="<string do Neon>" npm run db:migrate`.
+2. Não precisa migrar à mão: na Vercel o build roda `scripts/migrate.mjs` antes do `next build` (script `vercel-build`).
 3. Importe o repositório na Vercel e cadastre as variáveis do `.env.example` (com `NEXT_PUBLIC_SITE_URL` no domínio final e `RESEND_API_KEY` preenchida, senão ninguém recebe o link de login).
 4. O lembrete diário roda sozinho pelo `vercel.json` (12h UTC, 9h de Brasília).
 
