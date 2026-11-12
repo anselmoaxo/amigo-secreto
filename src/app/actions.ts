@@ -5,7 +5,8 @@ import { revalidatePath } from "next/cache";
 import { consumeLoginToken, getUser, logout, requestLogin, requireUser } from "@/lib/auth";
 import * as q from "@/lib/queries";
 import { drawEmail, sendEmail } from "@/lib/email";
-import { safeNext } from "@/lib/format";
+import { safeNext, siteUrl } from "@/lib/format";
+import { normalizePhone, sendWhatsApp } from "@/lib/whatsapp";
 
 const text = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
 const num = (f: FormData, k: string) => {
@@ -63,10 +64,12 @@ export async function createGroup(form: FormData) {
   if ((min !== null && (isNaN(min) || min < 0)) || (max !== null && (isNaN(max) || max < 0))) fail(back, "Valor inválido.");
   if (min !== null && max !== null && min > max) fail(back, "O valor mínimo é maior que o máximo.");
   const eventDate = text(form, "event_date");
+  const phone = phoneOrFail(form, back);
 
   const id = await attempt(back, () => q.createGroup(user.id, {
     name: name.slice(0, 80),
     displayName: displayName.slice(0, 60),
+    phone,
     eventDate: /^\d{4}-\d{2}-\d{2}$/.test(eventDate) ? eventDate : null,
     location: text(form, "location").slice(0, 120) || null,
     min, max,
@@ -80,7 +83,8 @@ export async function joinGroup(form: FormData) {
   const user = await requireUser(back);
   const displayName = text(form, "display_name").slice(0, 60);
   if (!displayName) fail(back, "Diga seu nome.");
-  const id = await attempt(back, () => q.joinGroup(code, user.id, displayName), "Não foi possível entrar.");
+  const phone = phoneOrFail(form, back);
+  const id = await attempt(back, () => q.joinGroup(code, user.id, displayName, phone), "Não foi possível entrar.");
   redirect(`/grupos/${id}`);
 }
 
@@ -128,14 +132,34 @@ export async function deleteExclusion(form: FormData) {
 export async function runDraw(form: FormData) {
   await ownerAction(form, async (groupId, userId) => {
     const { groupName, people } = await q.runDraw(groupId, userId);
-    await Promise.all(people.map((p) =>
+    const url = `${siteUrl()}/grupos/${groupId}`;
+    await Promise.all(people.flatMap((p) => [
       sendEmail(p.email, `🎁 Sorteio feito: ${groupName}`, drawEmail(p.display_name, groupName, groupId)),
-    ));
+      sendWhatsApp(p.phone, `🎁 Oi, ${p.display_name}! O sorteio do amigo secreto "${groupName}" foi feito. Veja quem você tirou (é segredo!): ${url}`),
+    ]));
   }, "Erro ao fazer o sorteio.");
 }
 
 export async function reopenGroup(form: FormData) {
   await ownerAction(form, (g, u) => q.reopenGroup(g, u), "Não foi possível reabrir.");
+}
+
+export async function updatePhone(form: FormData) {
+  const groupId = text(form, "group_id");
+  const path = `/grupos/${groupId}`;
+  const user = await requireUser(path);
+  const phone = phoneOrFail(form, path);
+  await q.updateMyPhone(groupId, user.id, phone);
+  revalidatePath(path);
+}
+
+/** Telefone é opcional; se veio preenchido, precisa ser válido. */
+function phoneOrFail(form: FormData, path: string) {
+  const raw = text(form, "phone");
+  if (!raw) return null;
+  const phone = normalizePhone(raw);
+  if (!phone) fail(path, "WhatsApp inválido. Use DDD + número, ex.: (11) 98765-4321.");
+  return phone;
 }
 
 export async function markSeen(groupId: string) {

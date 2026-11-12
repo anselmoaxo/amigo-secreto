@@ -29,7 +29,7 @@ export async function listMyGroups(userId: string) {
 
 export async function createGroup(
   userId: string,
-  data: { name: string; displayName: string; eventDate: string | null; location: string | null; min: number | null; max: number | null },
+  data: { name: string; displayName: string; phone: string | null; eventDate: string | null; location: string | null; min: number | null; max: number | null },
 ) {
   return sql.begin(async (tx) => {
     const [g] = await tx<{ id: string }[]>`
@@ -37,7 +37,7 @@ export async function createGroup(
       values (${data.name}, ${userId}, ${data.eventDate}, ${data.location}, ${data.min}, ${data.max},
               ${crypto.randomBytes(6).toString("hex")})
       returning id`;
-    await tx`insert into participants (group_id, user_id, display_name) values (${g.id}, ${userId}, ${data.displayName})`;
+    await tx`insert into participants (group_id, user_id, display_name, phone) values (${g.id}, ${userId}, ${data.displayName}, ${data.phone})`;
     return g.id;
   });
 }
@@ -45,8 +45,8 @@ export async function createGroup(
 /** Grupo + meu participante. null se não sou membro. */
 export async function getGroupForMember(groupId: string, userId: string) {
   if (!isUuid(groupId)) return null;
-  const [row] = await sql<(Group & { me_id: string })[]>`
-    select ${GROUP_COLS}, p.id as me_id from groups g
+  const [row] = await sql<(Group & { me_id: string; me_phone: string | null })[]>`
+    select ${GROUP_COLS}, p.id as me_id, p.phone as me_phone from groups g
     join participants p on p.group_id = g.id and p.user_id = ${userId}
     where g.id = ${groupId}`;
   return row ?? null;
@@ -59,14 +59,14 @@ export async function getInvite(code: string) {
   return row ?? null;
 }
 
-export async function joinGroup(code: string, userId: string, displayName: string) {
+export async function joinGroup(code: string, userId: string, displayName: string, phone: string | null = null) {
   const g = await getInvite(code);
   if (!g) throw new AppError("Convite inválido.");
   const [already] = await sql`select 1 from participants where group_id = ${g.id} and user_id = ${userId}`;
   if (already) return g.id;
   if (g.status !== "open") throw new AppError("O sorteio deste grupo já foi feito.");
   await sql`
-    insert into participants (group_id, user_id, display_name) values (${g.id}, ${userId}, ${displayName})
+    insert into participants (group_id, user_id, display_name, phone) values (${g.id}, ${userId}, ${displayName}, ${phone})
     on conflict (group_id, user_id) do nothing`;
   return g.id;
 }
@@ -92,6 +92,11 @@ export async function deleteWish(wishId: string, userId: string) {
   await sql`
     delete from wishes w using participants p
     where w.id = ${wishId} and w.participant_id = p.id and p.user_id = ${userId}`;
+}
+
+export async function updateMyPhone(groupId: string, userId: string, phone: string | null) {
+  if (!isUuid(groupId)) return;
+  await sql`update participants set phone = ${phone} where group_id = ${groupId} and user_id = ${userId}`;
 }
 
 // Sorteio -----------------------------------------------------------------
@@ -160,8 +165,8 @@ export async function runDraw(groupId: string, userId: string, random: () => num
   await requireOwner(groupId, userId);
   return sql.begin(async (tx) => {
     const [g] = await tx<{ name: string }[]>`select name from groups where id = ${groupId} for update`;
-    const people = await tx<{ id: string; display_name: string; email: string }[]>`
-      select p.id, p.display_name, u.email from participants p join users u on u.id = p.user_id
+    const people = await tx<{ id: string; display_name: string; email: string; phone: string | null }[]>`
+      select p.id, p.display_name, u.email, p.phone from participants p join users u on u.id = p.user_id
       where p.group_id = ${groupId}`;
     if (people.length < 3) throw new AppError("São precisas pelo menos 3 pessoas para sortear.");
     const rules = await tx<{ participant_a: string; participant_b: string }[]>`

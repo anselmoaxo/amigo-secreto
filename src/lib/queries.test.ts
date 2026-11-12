@@ -28,10 +28,10 @@ d("regras de acesso no banco", () => {
   afterAll(async () => { await sql?.end(); });
 
   it("cria grupo e convida", async () => {
-    groupId = await q.createGroup(users.ana, { name: "Família", displayName: "Ana", eventDate: "2026-12-24", location: null, min: 50, max: 100 });
+    groupId = await q.createGroup(users.ana, { name: "Família", displayName: "Ana", phone: "5511987654321", eventDate: "2026-12-24", location: null, min: 50, max: 100 });
     const g = await q.getGroupForMember(groupId, users.ana);
     code = g!.invite_code;
-    expect(await q.joinGroup(code, users.bia, "Bia")).toBe(groupId);
+    expect(await q.joinGroup(code, users.bia, "Bia", "5521912345678")).toBe(groupId);
     await q.joinGroup(code, users.caio, "Caio");
     await q.joinGroup(code, users.caio, "Caio de novo"); // entrar duas vezes não duplica
     expect(await q.listParticipants(groupId)).toHaveLength(3);
@@ -67,6 +67,8 @@ d("regras de acesso no banco", () => {
 
     const { people: notified } = await q.runDraw(groupId, users.ana);
     expect(notified.map((p) => p.email).sort()).toEqual(["ana@x.com", "bia@x.com", "caio@x.com", "duda@x.com"]);
+    expect(notified.find((p) => p.email === "bia@x.com")!.phone).toBe("5521912345678");
+    expect(notified.find((p) => p.email === "caio@x.com")!.phone).toBeNull();
 
     const matches = await Promise.all(["ana", "bia", "caio", "duda"].map((u) => q.getMyMatch(groupId, users[u])));
     const names = matches.map((m) => m!.name);

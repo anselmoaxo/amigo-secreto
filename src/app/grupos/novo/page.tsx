@@ -17,6 +17,10 @@ export default async function NewGroup({ searchParams }: { searchParams: Promise
         <label className="label" htmlFor="display_name">Seu nome no grupo</label>
         <input className="input" id="display_name" name="display_name" required maxLength={60} />
       </div>
+      <div>
+        <label className="label" htmlFor="phone">Seu WhatsApp (opcional, para lembretes)</label>
+        <input className="input" id="phone" name="phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="(11) 98765-4321" />
+      </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <label className="label" htmlFor="event_date">Data da festa</label>

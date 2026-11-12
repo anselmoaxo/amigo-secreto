@@ -3,11 +3,11 @@ import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import * as q from "@/lib/queries";
 import type { Wish } from "@/lib/queries";
-import { formatDate, priceRange, siteUrl } from "@/lib/format";
+import { formatDate, formatPhone, priceRange, siteUrl } from "@/lib/format";
 import { ShareInvite } from "@/components/ShareInvite";
 import { Reveal } from "@/components/Reveal";
 import {
-  addExclusion, addWish, deleteExclusion, deleteWish, removeParticipant, reopenGroup, runDraw,
+  addExclusion, addWish, deleteExclusion, deleteWish, removeParticipant, reopenGroup, runDraw, updatePhone,
 } from "../../actions";
 
 export default async function GroupPage({
@@ -93,6 +93,17 @@ export default async function GroupPage({
           </form>
         </section>
       )}
+
+      {/* WhatsApp para lembretes */}
+      <section className="card space-y-2">
+        <h2 className="font-semibold">Meu WhatsApp</h2>
+        <p className="text-xs text-stone-500">Opcional. Você recebe aviso do sorteio e lembrete na véspera.</p>
+        <form action={updatePhone} className="flex gap-2">
+          <input type="hidden" name="group_id" value={id} />
+          <input className="input" name="phone" type="tel" inputMode="tel" defaultValue={group.me_phone ? formatPhone(group.me_phone) : ""} placeholder="(11) 98765-4321" />
+          <button className="btn-secondary shrink-0">Salvar</button>
+        </form>
+      </section>
 
       {/* Participantes */}
       <section className="card space-y-3">

@@ -26,3 +26,10 @@ export function safeNext(next: string | null | undefined, fallback = "/grupos") 
 export function siteUrl() {
   return (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").replace(/\/$/, "");
 }
+
+/** 5511987654321 -> (11) 98765-4321 */
+export function formatPhone(p: string) {
+  const d = p.startsWith("55") ? p.slice(2) : p;
+  const m = d.match(/^(\d{2})(\d{4,5})(\d{4})$/);
+  return m ? `(${m[1]}) ${m[2]}-${m[3]}` : p;
+}

@@ -10,7 +10,7 @@ App web para organizar amigo secreto: crie o grupo, convide pelo WhatsApp, faça
 - Lista de desejos com links
 - Sorteio em ciclo: ninguém tira a si mesmo, sem trocas diretas, com regras de "quem não pode tirar quem"
 - Tela "Ver quem eu tirei" (nem o organizador vê os pares)
-- E-mail quando o sorteio sai e lembrete na véspera da festa
+- E-mail e WhatsApp (Evolution API) quando o sorteio sai e lembrete na véspera da festa
 - Painel do organizador: remover pessoas, regras, refazer ou desfazer o sorteio
 
 **Stack:** Next.js 15 + TypeScript + Tailwind, Postgres (local ou [Neon](https://neon.tech)), Resend para e-mail, Vercel.
@@ -37,6 +37,15 @@ npm run dev
 2. Rode `DATABASE_URL="<string do Neon>" npm run db:migrate`.
 3. Importe o repositório na Vercel e cadastre as variáveis do `.env.example` (com `NEXT_PUBLIC_SITE_URL` no domínio final e `RESEND_API_KEY` preenchida, senão ninguém recebe o link de login).
 4. O lembrete diário roda sozinho pelo `vercel.json` (12h UTC, 9h de Brasília).
+
+## WhatsApp (Evolution API)
+
+Preencha `EVOLUTION_API_URL`, `EVOLUTION_API_KEY` e `EVOLUTION_INSTANCE` no `.env.local`. Quem informar o WhatsApp recebe:
+
+- aviso quando o sorteio sai;
+- lembrete na véspera da festa.
+
+O lembrete é disparado pela rota `GET /api/cron/lembretes` com o cabeçalho `Authorization: Bearer <CRON_SECRET>`. Na Vercel isso roda sozinho (`vercel.json`). Fora da Vercel, crie no n8n um *Schedule Trigger* diário às 9h + *HTTP Request* para essa rota.
 
 ## Testes
 

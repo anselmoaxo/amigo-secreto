@@ -45,6 +45,10 @@ export default async function InvitePage({
             <label className="label" htmlFor="display_name">Seu nome</label>
             <input className="input" id="display_name" name="display_name" required maxLength={60} />
           </div>
+          <div>
+        <label className="label" htmlFor="phone">Seu WhatsApp (opcional, para lembretes)</label>
+        <input className="input" id="phone" name="phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="(11) 98765-4321" />
+          </div>
           <button className="btn w-full">Entrar no grupo</button>
         </form>
       )}
