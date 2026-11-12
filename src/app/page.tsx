@@ -16,7 +16,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ a
     <div className="mx-auto max-w-5xl px-4">
       {apagado && <Notice tone="success" className="mt-6">Grupo encerrado. Todos os dados dele foram apagados.</Notice>}
 
-      <section className="grid items-center gap-10 py-10 sm:py-16 md:grid-cols-[1.1fr_1fr]">
+      <section className="grid items-center gap-6 py-8 sm:gap-10 sm:py-16 md:grid-cols-[1.1fr_1fr]">
         <div className="space-y-6">
           <h1 className="text-[2.5rem] font-extrabold leading-[1.05] tracking-tight text-pine sm:text-6xl">
             Amigo secreto sem papelzinho perdido.
@@ -28,11 +28,12 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ a
             <Link href="/criar" className="btn btn-primary text-lg">Criar amigo secreto</Link>
             <a href="#convite" className="btn btn-ghost text-lg">Tenho um convite</a>
           </div>
+          <p><a href="#como" className="link">Veja como funciona</a></p>
         </div>
         <SlipStack />
       </section>
 
-      <section aria-labelledby="como" className="border-t border-line/70 py-12">
+      <section aria-labelledby="como" className="scroll-mt-6 border-t border-line/70 py-10 sm:py-12">
         <h2 id="como" className="text-2xl font-bold text-pine">Como funciona</h2>
         <ol className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {STEPS.map(([t, d], i) => (
@@ -77,21 +78,24 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ a
 /** Ilustração: papeizinhos com nomes escritos à mão, um deles aberto. */
 function SlipStack() {
   const names = ["Ana", "Caio", "Duda"];
+  // No celular a ilustração encolhe (sem sumir), para "Como funciona" aparecer mais cedo.
   return (
-    <div aria-hidden className="relative mx-auto h-80 w-full max-w-sm select-none">
-      {names.map((n, i) => (
-        <div
-          key={n}
-          className="slip hand absolute flex h-20 w-36 items-center justify-center text-2xl font-bold text-pine/80"
-          style={{ left: `${[0, 34, 62][i]}%`, top: `${[4, 20, 0][i]}%`, transform: `rotate(${[-8, 5, -4][i]}deg)` }}
-        >
-          {n}
+    <div aria-hidden className="relative mx-auto h-60 w-full max-w-[18rem] select-none sm:h-80 sm:max-w-sm">
+      <div className="absolute left-0 top-0 h-80 w-[24rem] origin-top-left scale-[0.75] sm:static sm:h-full sm:w-full sm:scale-100">
+        {names.map((n, i) => (
+          <div
+            key={n}
+            className="slip hand absolute flex h-20 w-36 items-center justify-center text-2xl font-bold text-pine/80"
+            style={{ left: `${[0, 34, 62][i]}%`, top: `${[4, 20, 0][i]}%`, transform: `rotate(${[-8, 5, -4][i]}deg)` }}
+          >
+            {n}
+          </div>
+        ))}
+        <div className="slip absolute bottom-0 left-[12%] w-60 rotate-[3deg] px-6 py-5">
+          <p className="text-[0.95rem] text-muted">Você tirou</p>
+          <p className="hand text-5xl font-bold text-cherry">Bia</p>
+          <p className="mt-2 border-t border-dashed border-line pt-2 text-[0.9rem] text-muted">Quer: livro de receitas, tamanho M</p>
         </div>
-      ))}
-      <div className="slip absolute bottom-0 left-[12%] w-60 rotate-[3deg] px-6 py-5">
-        <p className="text-[0.95rem] text-muted">Você tirou</p>
-        <p className="hand text-5xl font-bold text-cherry">Bia</p>
-        <p className="mt-2 border-t border-dashed border-line pt-2 text-[0.9rem] text-muted">Quer: livro de receitas, tamanho M</p>
       </div>
     </div>
   );

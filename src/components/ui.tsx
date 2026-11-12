@@ -83,7 +83,7 @@ export function Switch({
           id={id} name={name} type="checkbox" role="switch" disabled={disabled}
           checked={checked} defaultChecked={defaultChecked}
           onChange={onChange ? (e) => onChange(e.target.checked) : undefined}
-          className="peer h-8 w-14 cursor-pointer appearance-none rounded-full bg-line transition-colors checked:bg-pine disabled:cursor-not-allowed disabled:opacity-50"
+          className="peer h-8 w-14 cursor-pointer appearance-none rounded-full bg-line-strong transition-colors checked:bg-pine disabled:cursor-not-allowed disabled:opacity-50"
         />
         <span aria-hidden className="pointer-events-none absolute left-1 top-1 h-6 w-6 rounded-full bg-white shadow transition-transform peer-checked:translate-x-6" />
       </span>

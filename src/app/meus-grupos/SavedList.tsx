@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { LinkBadge } from "@/components/LinkKind";
 import { Empty } from "@/components/ui";
 import { forgetLink, readLinks, type SavedLink } from "@/lib/saved";
 
@@ -13,7 +14,7 @@ export function SavedList() {
   if (links.length === 0) {
     return (
       <Empty title="Nenhum grupo neste aparelho">
-        <p>Crie um amigo secreto ou, se você já participa de um, receba seus links por e-mail.</p>
+        <p>Crie um amigo secreto, abra um convite logo abaixo ou, se você já participa de um, receba seus links por e-mail.</p>
         <div className="mt-4 flex flex-col justify-center gap-3 sm:flex-row">
           <Link href="/criar" className="btn btn-primary">Criar amigo secreto</Link>
           <Link href="/recuperar" className="btn btn-ghost">Receber meus links</Link>
@@ -27,15 +28,16 @@ export function SavedList() {
       <ul className="sheet divide-y divide-line px-4 sm:px-5">
         {links.map((l) => (
           <li key={`${l.kind}-${l.token}`} className="flex flex-wrap items-center justify-between gap-3 py-4">
-            <div>
-              <p className="font-bold">{l.group}</p>
+            <div className="min-w-0 space-y-1">
+              <p className="break-words font-bold">{l.group}</p>
               <p className="text-[0.95rem] text-muted">{l.kind === "admin" ? "Você organiza" : `Você participa${l.person ? ` como ${l.person}` : ""}`}</p>
+              <LinkBadge kind={l.kind === "admin" ? "admin" : "participant"} />
             </div>
             <div className="flex items-center gap-3">
               <Link href={`/${l.kind === "admin" ? "o" : "p"}/${l.token}`} className="btn btn-pine btn-sm">
                 {l.kind === "admin" ? "Abrir painel" : "Abrir"}
               </Link>
-              <button type="button" className="link link-danger text-[0.95rem]"
+              <button type="button" className="link link-danger inline-flex min-h-11 items-center px-1 text-[0.95rem]"
                 onClick={() => { forgetLink(l.kind, l.token); setLinks(readLinks()); }}
                 aria-label={`Tirar ${l.group} deste aparelho`}>
                 Tirar daqui
