@@ -154,8 +154,9 @@ export default async function OrganizerPage({
             <ActionForm action={addPersonAction} hidden={{ t: token }} resetOnSuccess className="space-y-4 px-5 pb-5">
               <TextField name="name" id="add-name" label="Nome" maxLength={60} autoComplete="off" required />
               <div className="grid gap-4 sm:grid-cols-2">
-                <TextField name="email" id="add-email" label="E-mail" optional type="email" inputMode="email" autoComplete="off" />
-                <TextField name="phone" id="add-phone" label="WhatsApp" optional type="tel" inputMode="tel" autoComplete="off" placeholder="(11) 98765-4321" />
+                <p className="text-[0.95rem] text-muted sm:col-span-2">Informe pelo menos um contato: e-mail ou WhatsApp.</p>
+                <TextField name="email" id="add-email" label="E-mail" type="email" inputMode="email" autoComplete="off" autoCapitalize="off" spellCheck={false} />
+                <TextField name="phone" id="add-phone" label="WhatsApp" type="tel" inputMode="tel" autoComplete="off" placeholder="(11) 98765-4321" />
               </div>
               <TextField name="team" id="add-team" label="Núcleo" optional maxLength={40} list="nucleos" hint="Quem tem o mesmo núcleo não se tira. Ex.: Casa da Ana" />
               {emailEnabled() && (

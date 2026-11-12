@@ -26,7 +26,7 @@ export default function Faq() {
         <h2 id="priv" className="text-2xl font-bold text-pine">Como usamos os dados</h2>
         <ul className="space-y-3">
           {[
-            ["O que guardamos", "Nome de cada participante, e-mail e WhatsApp se forem informados, a lista de desejos e o resultado do sorteio. Nada além disso."],
+            ["O que guardamos", "Nome de cada participante, o e-mail ou WhatsApp que cada um informar (pelo menos um), a lista de desejos e o resultado do sorteio. Nada além disso."],
             ["Para que serve", "Só para esta brincadeira: mostrar o convite, avisar quando o sorteio sair, lembrar na véspera e reenviar links perdidos. Não vendemos nem compartilhamos dados, e não mandamos propaganda."],
             ["Quem vê o quê", "Cada pessoa vê só quem tirou. A lista de desejos aparece apenas para quem tirou aquela pessoa. E-mails e telefones ficam visíveis só para o organizador. Ninguém vê os pares, a não ser que o organizador tenha escolhido isso ao criar o grupo, e nesse caso todos são avisados."],
             ["Links", "Cada link tem um código longo e aleatório, impossível de adivinhar. O resultado nunca vai no endereço. Quem tiver o seu link consegue ver o seu resultado, por isso não repasse."],

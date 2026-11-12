@@ -308,10 +308,9 @@ function PeopleStep({
 
       {people.length > 0 && (
         <p className="text-[0.95rem] text-muted">
-          E-mail e WhatsApp são opcionais. {whatsapp
-            ? "Com eles, a pessoa recebe o link dela e os avisos do sorteio."
-            : "Com o e-mail, a pessoa recebe o link dela e os avisos; o WhatsApp serve para você mandar o link pelo seu celular."}{" "}
-          Sem contato, você manda o link pelo painel depois.
+          Cada pessoa precisa de pelo menos um contato: e-mail ou WhatsApp. {whatsapp
+            ? "Por ele, ela recebe o link dela e os avisos do sorteio."
+            : "Com o e-mail, a pessoa recebe o link dela e os avisos; o WhatsApp serve para você mandar o link pelo seu celular."}
         </p>
       )}
 
@@ -333,12 +332,12 @@ function PeopleStep({
                   <input {...fieldProps(`p-${i}-name`, e.name)} className="input" value={p.name} maxLength={60}
                     autoComplete="off" onChange={(x) => update(i, "name", x.target.value)} />
                 </Field>
-                <div role="group" aria-label={`Contato de ${p.name || `participante ${i + 1}`} (opcional)`} className="grid gap-3 sm:grid-cols-2">
-                  <Field id={`p-${i}-email`} label="E-mail" optional error={e.email}>
+                <div role="group" aria-label={`Contato de ${p.name || `participante ${i + 1}`} (e-mail ou WhatsApp, pelo menos um)`} className="grid gap-3 sm:grid-cols-2">
+                  <Field id={`p-${i}-email`} label="E-mail" error={e.email}>
                     <input {...fieldProps(`p-${i}-email`, e.email)} className="input" type="email" inputMode="email" autoComplete="off" autoCapitalize="off" spellCheck={false}
                       value={p.email} onChange={(x) => update(i, "email", x.target.value)} />
                   </Field>
-                  <Field id={`p-${i}-phone`} label="WhatsApp" optional error={e.phone}>
+                  <Field id={`p-${i}-phone`} label="WhatsApp" error={e.phone}>
                     <input {...fieldProps(`p-${i}-phone`, e.phone)} className="input" type="tel" inputMode="tel" autoComplete="off"
                       placeholder="(11) 98765-4321" value={p.phone} onChange={(x) => update(i, "phone", x.target.value)} />
                   </Field>
@@ -384,12 +383,12 @@ function Review({
   // Quem recebe o link agora: e-mail sempre que houver envio de e-mail; WhatsApp só se o envio pelo site estiver ligado.
   const reachable = draft.people.filter((p) => (email && p.email.trim()) || (whatsapp && p.phone.trim())).length;
   const channels = [email && "e-mail", whatsapp && "WhatsApp"].filter(Boolean).join(" ou ");
-  const phone = g.organizerJoins && whatsapp && g.organizerPhone ? formatPhone(normalizePhone(g.organizerPhone) ?? g.organizerPhone) : "";
+  const phone = g.organizerJoins && g.organizerPhone ? formatPhone(normalizePhone(g.organizerPhone) ?? g.organizerPhone) : "";
 
   const rows: [string, React.ReactNode, number][] = [
     ["Grupo", `${g.name} (${occasionLabel(g.occasion)})`, 0],
     ["Organizador", `${g.organizerName}${g.organizerJoins ? ", participa do sorteio" : ", só organiza"}`, 0],
-    ["Seus contatos", [g.organizerEmail, phone].filter(Boolean).join(" e ") || "Nenhum", 0],
+    ["Seu contato", [g.organizerEmail, phone].filter(Boolean).join(" e ") || "Nenhum", 0],
     ["Quando", when || "Sem data", 1],
     ["Onde", g.location || "Sem local", 1],
     ["Valor", price || "Sem valor definido", 1],
@@ -422,7 +421,7 @@ function Review({
       </dl>
 
       {!g.organizerEmail.trim() && (
-        <Notice tone="warn" title="Você não informou e-mail.">
+        <Notice tone="warn" title="Você informou só o WhatsApp.">
           Tudo bem, mas guarde o link do painel logo depois de criar: copie e mande para você mesmo no WhatsApp, ou salve nos favoritos.
           Sem e-mail não dá para recuperar o painel em “Perdi meu link”; ele fica salvo só neste aparelho.{" "}
           <button type="button" className="link" onClick={() => goTo(0)}>Adicionar e-mail</button>
@@ -433,8 +432,8 @@ function Review({
         <label className="flex cursor-pointer items-start gap-3">
           <input type="checkbox" className="mt-1 h-5 w-5 shrink-0 accent-[var(--color-pine)]" checked={draft.sendInvites} onChange={(e) => setSend(e.target.checked)} />
           <span>
-            Mandar agora o link pessoal de cada participante por {channels} ({reachable} {reachable === 1 ? "pessoa tem" : "pessoas têm"} contato).
-            <span className="block text-[0.95rem] text-muted">Quem não tiver contato recebe o link pelo painel, depois.</span>
+            Mandar agora o link pessoal de cada participante por {channels} ({reachable} {reachable === 1 ? "pessoa" : "pessoas"}).
+            <span className="block text-[0.95rem] text-muted">Se preferir, você manda os links depois, pelo painel.</span>
           </span>
         </label>
       )}

@@ -285,7 +285,7 @@ d("autorização, sigilo e integridade (API direta)", () => {
   it("5b. criar grupos e disparar convites tem limite por origem", async () => {
     process.env.TRUST_PROXY = "1";
     const { createGroupAction } = await import("@/app/actions/create");
-    const group = { name: "Spam", occasion: "amigos", organizerName: "S", organizerEmail: "", organizerPhone: "", organizerJoins: true,
+    const group = { name: "Spam", occasion: "amigos", organizerName: "S", organizerEmail: "", organizerPhone: "(11) 98765-4321", organizerJoins: true,
       eventDate: "", eventTime: "", location: "", minValue: "", maxValue: "", description: "", rsvpDeadline: "",
       wishlistEnabled: true, wishlistUntil: "", allowChanges: true, organizerCanSeePairs: false };
     try {
