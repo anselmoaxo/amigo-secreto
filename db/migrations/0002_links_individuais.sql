@@ -26,9 +26,9 @@ update groups g set
   organizer_name = (select p.display_name from participants p where p.group_id = g.id and p.user_id = g.owner_id limit 1)
 from users u where u.id = g.owner_id;
 
+-- user_id passa a ser opcional. A restrição unique (group_id, user_id) continua (NULLs não colidem),
+-- para a versão anterior do app seguir funcionando no mesmo banco durante a troca.
 alter table participants alter column user_id drop not null;
-alter table participants drop constraint if exists participants_group_id_user_id_key;
-create unique index participants_group_user_uniq on participants(group_id, user_id) where user_id is not null;
 
 alter table participants
   add column email text check (char_length(email) <= 200),
