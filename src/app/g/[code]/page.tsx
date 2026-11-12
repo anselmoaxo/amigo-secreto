@@ -1,56 +1,48 @@
-import { redirect } from "next/navigation";
-import { requireUser } from "@/lib/auth";
-import { getInvite } from "@/lib/queries";
-import { sql } from "@/lib/db";
-import { formatDate, priceRange } from "@/lib/format";
-import { joinGroup } from "../../actions";
+import type { Metadata } from "next";
+import Link from "next/link";
+import { GroupTag } from "@/components/GroupTag";
+import { Notice } from "@/components/ui";
+import * as q from "@/lib/queries";
+import { JoinForm } from "./JoinForm";
 
-export default async function InvitePage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ code: string }>;
-  searchParams: Promise<{ erro?: string }>;
-}) {
+export const metadata: Metadata = { title: "Convite", robots: { index: false } };
+
+export default async function InvitePage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
-  const { erro } = await searchParams;
-  const user = await requireUser(`/g/${encodeURIComponent(code)}`);
+  const invite = await q.getInvite(code);
 
-  const invite = await getInvite(code);
-  if (!invite) return <p className="card">Convite não encontrado. Confira o link com quem te convidou.</p>;
-
-  const [me] = await sql`select 1 from participants where group_id = ${invite.id} and user_id = ${user.id}`;
-  if (me) redirect(`/grupos/${invite.id}`);
-
-  const price = priceRange(invite.min_value, invite.max_value);
-  return (
-    <div className="card space-y-4">
-      <h1 className="text-xl font-bold">Você foi convidado para o amigo secreto</h1>
-      <div>
-        <p className="text-lg font-semibold">{invite.name}</p>
-        <p className="text-sm text-stone-600">
-          {invite.members} {invite.members === 1 ? "pessoa já entrou" : "pessoas já entraram"}
-          {invite.event_date && ` · ${formatDate(invite.event_date)}`}
-          {invite.location && ` · ${invite.location}`}
-          {price && ` · ${price}`}
-        </p>
+  if (!invite) {
+    return (
+      <div className="mx-auto max-w-xl space-y-4 px-4 py-12">
+        <h1 className="text-3xl font-extrabold text-pine">Convite não encontrado</h1>
+        <p>O link pode estar incompleto, ou o grupo foi encerrado pelo organizador. Peça o link de novo para quem te convidou.</p>
+        <Link href="/" className="btn btn-ghost">Ir para o início</Link>
       </div>
-      {invite.status !== "open" ? (
-        <p className="error">O sorteio deste grupo já foi feito. Peça ao organizador para reabrir.</p>
+    );
+  }
+
+  const closed = q.inviteClosedReason(invite);
+  return (
+    <div className="mx-auto max-w-xl space-y-6 px-4 py-8">
+      <p className="text-lg">{invite.organizer_name ? <><strong>{invite.organizer_name}</strong> te convidou para o amigo secreto</> : "Você foi convidado para o amigo secreto"}</p>
+      <GroupTag group={invite}>
+        <p className="mt-3 text-[0.95rem] text-muted">{invite.members} {invite.members === 1 ? "pessoa no grupo" : "pessoas no grupo"}</p>
+      </GroupTag>
+      {invite.organizer_can_see_pairs && <Notice tone="warn">Neste grupo, o organizador escolheu poder ver todos os pares do sorteio.</Notice>}
+
+      {closed ? (
+        <Notice tone="warn" title="Não dá mais para entrar por este convite.">
+          {closed} Se você já entrou, abra o link pessoal que recebeu ou <Link href="/recuperar" className="link">receba seus links por e-mail</Link>.
+        </Notice>
       ) : (
-        <form action={joinGroup} className="space-y-3">
-          {erro && <p className="error">{erro}</p>}
-          <input type="hidden" name="code" value={code} />
-          <div>
-            <label className="label" htmlFor="display_name">Seu nome</label>
-            <input className="input" id="display_name" name="display_name" required maxLength={60} />
-          </div>
-          <div>
-        <label className="label" htmlFor="phone">Seu WhatsApp (opcional, para lembretes)</label>
-        <input className="input" id="phone" name="phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="(11) 98765-4321" />
-          </div>
-          <button className="btn w-full">Entrar no grupo</button>
-        </form>
+        <div className="sheet p-5 sm:p-7">
+          <h2 className="text-xl font-bold text-pine">Entrar no grupo</h2>
+          <p className="mt-1 text-muted">Você recebe um link só seu para ver quem tirou. Não precisa criar conta.</p>
+          <JoinForm code={code} groupName={invite.name} />
+          <p className="mt-5 text-[0.95rem] text-muted">
+            Já entrou antes? Abra <Link href="/meus-grupos" className="link">Meus grupos</Link> ou <Link href="/recuperar" className="link">receba seus links por e-mail</Link>.
+          </p>
+        </div>
       )}
     </div>
   );

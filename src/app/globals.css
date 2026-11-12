@@ -1,22 +1,116 @@
 @import "tailwindcss";
 
-:root {
-  --background: #fdf8f3;
-  --foreground: #1f2937;
+/*
+ * Direção visual "Papelzinho": o ritual de escrever nomes em papeizinhos dobrados.
+ * Fundo verde bem claro (papel de seda), verde-pinheiro para estrutura,
+ * vermelho-cereja só para a ação principal e a revelação, dourado só em detalhes.
+ */
+@theme {
+  --color-paper: #f1f5ef;
+  --color-paper-deep: #e4ebe3;
+  --color-sheet: #fffefb;
+  --color-pine: #0f4d3a;
+  --color-pine-dark: #0a3729;
+  --color-pine-soft: #dbe8df;
+  --color-ink: #1e2a24;
+  --color-muted: #55665c;
+  --color-line: #cfd9d1;
+  --color-cherry: #c21f36;
+  --color-cherry-dark: #9e1729;
+  --color-cherry-soft: #fbe6e8;
+  --color-gold: #e9b44c;
+  --color-gold-soft: #fbf1db;
+  --color-gold-ink: #7a5410;
+  --font-sans: var(--font-atkinson), system-ui, sans-serif;
+  --font-hand: var(--font-shantell), "Comic Sans MS", cursive;
 }
+
+html { -webkit-text-size-adjust: 100%; }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 1.0625rem;
+  line-height: 1.55;
 }
 
+:focus-visible {
+  outline: 3px solid var(--color-gold);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+::selection { background: var(--color-gold-soft); }
+
 @layer components {
-  .card { @apply rounded-xl border border-stone-200 bg-white p-4 shadow-sm; }
-  .btn { @apply inline-flex items-center justify-center rounded-lg bg-red-700 px-4 py-2 font-semibold text-white hover:bg-red-800 disabled:opacity-50; }
-  .btn-secondary { @apply inline-flex items-center justify-center rounded-lg border border-stone-300 bg-white px-4 py-2 font-semibold hover:bg-stone-50; }
-  .btn-green { @apply inline-flex items-center justify-center rounded-lg bg-green-700 px-4 py-2 font-semibold text-white hover:bg-green-800; }
-  .input { @apply w-full rounded-lg border border-stone-300 bg-white px-3 py-2 focus:border-red-600 focus:outline-none; }
-  .label { @apply mb-1 block text-sm font-medium text-stone-700; }
-  .error { @apply rounded-lg bg-red-50 p-3 text-sm text-red-800; }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+    min-height: 3rem; padding: .7rem 1.4rem; border-radius: 999px;
+    font-weight: 700; line-height: 1.2; text-align: center;
+    transition: background-color .15s, box-shadow .15s, transform .05s;
+    cursor: pointer;
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn:disabled, .btn[aria-disabled="true"] { opacity: .55; cursor: not-allowed; transform: none; }
+  .btn-primary { background: var(--color-cherry); color: #fff; }
+  .btn-primary:hover:not(:disabled) { background: var(--color-cherry-dark); }
+  .btn-pine { background: var(--color-pine); color: #fff; }
+  .btn-pine:hover:not(:disabled) { background: var(--color-pine-dark); }
+  .btn-ghost { background: var(--color-sheet); color: var(--color-pine); box-shadow: inset 0 0 0 1.5px var(--color-line); }
+  .btn-ghost:hover:not(:disabled) { box-shadow: inset 0 0 0 1.5px var(--color-pine); }
+  .btn-whats { background: #1a7f45; color: #fff; }
+  .btn-whats:hover:not(:disabled) { background: #136536; }
+  .btn-sm { min-height: 2.5rem; padding: .45rem 1rem; font-size: .95rem; }
+  .link { color: var(--color-pine); text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1.5px; font-weight: 600; }
+  .link:hover { color: var(--color-pine-dark); text-decoration-color: var(--color-gold); }
+  .link-danger { color: var(--color-cherry); }
+
+  .input {
+    width: 100%; min-height: 3rem; padding: .65rem .9rem; border-radius: .75rem;
+    background: #fff; border: 1.5px solid var(--color-line); color: var(--color-ink);
+  }
+  .input:hover { border-color: #a9b8ad; }
+  .input:focus { outline: none; border-color: var(--color-pine); box-shadow: 0 0 0 3px var(--color-pine-soft); }
+  .input[aria-invalid="true"] { border-color: var(--color-cherry); }
+  textarea.input { min-height: 6rem; resize: vertical; }
+
+  /* Folha: a superfície principal de conteúdo. Uma só, sem sombras empilhadas. */
+  .sheet { background: var(--color-sheet); border-radius: 1.25rem; border: 1px solid var(--color-line); }
+
+  /* Etiqueta de presente: cabeçalho do grupo. */
+  .tag {
+    position: relative; background: var(--color-sheet);
+    border: 1px solid var(--color-line); border-radius: .9rem;
+    padding: 1.25rem 1.25rem 1.25rem 3.25rem;
+  }
+  .tag::before {
+    content: ""; position: absolute; left: 1.15rem; top: 1.55rem;
+    width: .9rem; height: .9rem; border-radius: 999px;
+    background: var(--color-paper); box-shadow: inset 0 0 0 1.5px var(--color-line);
+  }
+  .tag::after {
+    content: ""; position: absolute; left: -1.4rem; top: 1.95rem; width: 3rem; height: 2px;
+    background: var(--color-gold); transform: rotate(-18deg); transform-origin: right center;
+  }
+  @media (max-width: 380px) { .tag::after { display: none; } }
+
+  /* Papelzinho dobrado (revelação). */
+  .slip {
+    position: relative; background: #fffdf6; border-radius: .35rem;
+    box-shadow: 0 1px 0 rgba(15, 77, 58, .08), 0 14px 30px -18px rgba(15, 77, 58, .45);
+    background-image: linear-gradient(to bottom, transparent calc(50% - 1px), rgba(15,77,58,.10) 50%, transparent calc(50% + 1px));
+  }
+  .hand { font-family: var(--font-hand); }
+}
+
+@keyframes unfold {
+  0% { transform: perspective(700px) rotateX(-88deg); opacity: .2; }
+  70% { transform: perspective(700px) rotateX(8deg); opacity: 1; }
+  100% { transform: perspective(700px) rotateX(0); }
+}
+.unfold { transform-origin: top center; animation: unfold .7s cubic-bezier(.2,.7,.3,1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
