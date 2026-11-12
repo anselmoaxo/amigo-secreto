@@ -114,3 +114,35 @@ body {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
+
+/* Carrossel circular (CircularCarousel). */
+.cc-card { will-change: transform; user-select: none; }
+.cc-face, .cc-back { position: absolute; inset: 0; overflow: hidden; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.cc-face {
+  background: var(--color-sheet); border: 1px solid var(--color-line);
+  box-shadow: 0 18px 34px -22px rgba(15, 77, 58, .55);
+}
+.cc-img {
+  width: 100%; height: 100%; object-fit: cover; object-position: top;
+  transform: translateX(var(--px, 0)) scale(1.12); transform-origin: center top; pointer-events: none;
+}
+.cc-fade { position: absolute; inset: 0; background: var(--fade-color); opacity: var(--fade, 0); pointer-events: none; }
+.cc-caption {
+  position: absolute; left: 0; right: 0; bottom: 0; padding: .6rem .8rem;
+  background: linear-gradient(transparent, rgba(10, 55, 41, .85)); color: #fff;
+}
+/* Verso: um papelzinho dobrado, escurecido quando está de costas. */
+.cc-back {
+  transform: rotateY(180deg);
+  background-color: var(--color-paper-deep);
+  background-image:
+    linear-gradient(rgba(10, 55, 41, var(--shade, 0)), rgba(10, 55, 41, var(--shade, 0))),
+    linear-gradient(to bottom, transparent calc(50% - 1px), rgba(15, 77, 58, .14) 50%, transparent calc(50% + 1px));
+  border: 1px solid var(--color-line);
+}
+/* Entrada "rise": o movimento fica no invólucro e a opacidade nas faces,
+   porque opacidade num elemento 3D achata a cena. */
+@keyframes cc-rise { from { transform: translateY(90px); } to { transform: none; } }
+@keyframes cc-appear { from { opacity: 0; } to { opacity: 1; } }
+.cc-rise { animation: cc-rise .8s cubic-bezier(.2, .7, .3, 1) both; }
+.cc-rise > .cc-face, .cc-rise > .cc-back { animation: cc-appear .6s ease-out both; }
