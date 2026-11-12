@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🎁 Amigo Secreto
 
-## Getting Started
+App web para organizar amigo secreto: crie o grupo, convide pelo WhatsApp, faça o sorteio e cada pessoa vê só quem tirou.
 
-First, run the development server:
+**O que já tem (MVP)**
+
+- Login sem senha (link mágico por e-mail)
+- Criar grupo com data, local e faixa de valor
+- Convite por link e botão de WhatsApp
+- Lista de desejos com links
+- Sorteio em ciclo: ninguém tira a si mesmo, sem trocas diretas, com regras de "quem não pode tirar quem"
+- Tela "Ver quem eu tirei" (nem o organizador vê os pares)
+- E-mail quando o sorteio sai e lembrete na véspera da festa
+- Painel do organizador: remover pessoas, regras, refazer ou desfazer o sorteio
+
+**Stack:** Next.js 15 + TypeScript + Tailwind, Supabase (Postgres, Auth, RLS), Resend, Vercel.
+
+## Como rodar
+
+1. Crie um projeto em [supabase.com](https://supabase.com) (plano grátis).
+2. No **SQL Editor**, rode `supabase/migrations/0001_init.sql`.
+3. Em **Authentication > URL Configuration**, coloque o endereço do app em *Site URL* e adicione `http://localhost:3000/auth/callback` (e o de produção) em *Redirect URLs*.
+4. Copie `.env.example` para `.env.local` e preencha com as chaves de **Project Settings > API**.
+5. Rode:
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abra http://localhost:3000.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Publicar na Vercel
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Importe o repositório na Vercel.
+2. Cadastre as mesmas variáveis do `.env.example` (com `NEXT_PUBLIC_SITE_URL` apontando para o domínio final).
+3. O lembrete diário roda sozinho pelo `vercel.json` (12h UTC, 9h de Brasília).
 
-## Learn More
+## Testes
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm test
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Segurança
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Todas as tabelas têm RLS. Cada participante só lê o próprio par do sorteio.
+- O sorteio é calculado no servidor e gravado com a chave de serviço (`SUPABASE_SERVICE_ROLE_KEY`), que nunca vai para o navegador.

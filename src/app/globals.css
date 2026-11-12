@@ -1,26 +1,22 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --background: #fdf8f3;
+  --foreground: #1f2937;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+@layer components {
+  .card { @apply rounded-xl border border-stone-200 bg-white p-4 shadow-sm; }
+  .btn { @apply inline-flex items-center justify-center rounded-lg bg-red-700 px-4 py-2 font-semibold text-white hover:bg-red-800 disabled:opacity-50; }
+  .btn-secondary { @apply inline-flex items-center justify-center rounded-lg border border-stone-300 bg-white px-4 py-2 font-semibold hover:bg-stone-50; }
+  .btn-green { @apply inline-flex items-center justify-center rounded-lg bg-green-700 px-4 py-2 font-semibold text-white hover:bg-green-800; }
+  .input { @apply w-full rounded-lg border border-stone-300 bg-white px-3 py-2 focus:border-red-600 focus:outline-none; }
+  .label { @apply mb-1 block text-sm font-medium text-stone-700; }
+  .error { @apply rounded-lg bg-red-50 p-3 text-sm text-red-800; }
 }
