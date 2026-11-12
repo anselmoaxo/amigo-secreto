@@ -2,16 +2,21 @@
 
 App web para organizar amigo secreto: crie o grupo, convide pelo WhatsApp, faça o sorteio e cada pessoa vê só quem tirou.
 
-**O que já tem (MVP)**
+**O que tem**
 
-- Login sem senha (link mágico por e-mail)
-- Criar grupo com data, local e faixa de valor
-- Convite por link e botão de WhatsApp
-- Lista de desejos com links
-- Sorteio em ciclo: ninguém tira a si mesmo, sem trocas diretas, com regras de "quem não pode tirar quem"
-- Tela "Ver quem eu tirei" (nem o organizador vê os pares)
-- E-mail e WhatsApp (Evolution API) quando o sorteio sai e lembrete na véspera da festa
-- Painel do organizador: remover pessoas, regras, refazer ou desfazer o sorteio
+- Sem conta: o organizador usa o link do painel e cada participante, o próprio link (códigos aleatórios de 192 bits; no banco ficam só o hash e uma cópia cifrada)
+- Criação do grupo em 5 etapas (grupo, encontro, participantes, regras, revisão), sem perder dados ao voltar ou recarregar
+- Ocasião, data e horário, local, faixa de valor, recado, prazo para confirmar, lista de desejos com prazo, lista aberta ou fechada
+- Convite geral (mensagem pronta para o WhatsApp) e link individual de cada pessoa (WhatsApp, copiar ou e-mail)
+- Confirmação de presença, reenvio de links, troca de link, edição e remoção antes do sorteio
+- Regras: núcleos (casais, famílias) e combinações proibidas nos dois sentidos ou num só; antes de sortear o site confere se há solução e explica o que ajustar
+- Sorteio com `crypto.randomInt`; tenta um ciclo único (sem trocas diretas) e, se as regras não deixarem, aceita qualquer combinação válida
+- Revelação com tela de confirmação, botão para esconder de novo e aviso de quando o resultado foi aberto pela primeira vez
+- Refazer o sorteio só antes de alguém ver; depois disso, exige confirmação explícita
+- Organizador só vê os pares se marcar isso na criação (todos são avisados; dá para desligar, não para religar)
+- "Meus grupos" guardado no aparelho e "Perdi meu link" por e-mail
+- Encerrar e apagar o grupo; apagamos sozinhos 30 dias depois da festa
+- E-mail (Resend) e WhatsApp (Evolution API) para convite, aviso do sorteio e lembrete na véspera
 
 **Stack:** Next.js 15 + TypeScript + Tailwind, Postgres (local ou [Neon](https://neon.tech)), Resend para e-mail, Vercel.
 
@@ -29,14 +34,14 @@ npm run db:migrate
 npm run dev
 ```
 
-4. Abra http://localhost:3000 e peça o link de acesso. **Sem `RESEND_API_KEY`, o link de login aparece no terminal** onde o `npm run dev` está rodando: copie e abra no navegador.
+4. Abra http://localhost:3000 e crie um grupo. **Sem `RESEND_API_KEY`, os e-mails (com os links) aparecem só no terminal** onde o `npm run dev` está rodando.
 
 ## Publicar (Neon + Vercel)
 
 1. Crie um banco no Neon e copie a connection string (com `?sslmode=require`).
 2. Não precisa migrar à mão: na Vercel o build roda `scripts/migrate.mjs` antes do `next build` (script `vercel-build`).
-3. Importe o repositório na Vercel e cadastre as variáveis do `.env.example` (com `NEXT_PUBLIC_SITE_URL` no domínio final e `RESEND_API_KEY` preenchida, senão ninguém recebe o link de login).
-4. O lembrete diário roda sozinho pelo `vercel.json` (12h UTC, 9h de Brasília).
+3. Importe o repositório na Vercel e cadastre as variáveis do `.env.example`, com `NEXT_PUBLIC_SITE_URL` no domínio final e `APP_SECRET` (gere com `openssl rand -base64 32`; sem ele o app usa o `CRON_SECRET`). Não troque o `APP_SECRET` depois de publicar.
+4. O lembrete diário roda sozinho pelo `vercel.json` (12h UTC, 9h de Brasília) e também apaga grupos antigos.
 
 ## WhatsApp (Evolution API)
 
@@ -54,9 +59,9 @@ npm test                                     # sorteio
 TEST_DATABASE_URL=postgres://... npm test    # + regras de acesso no banco (APAGA esse banco)
 ```
 
-## Segurança
+## Segurança e privacidade
 
-- Login sem senha: link de uso único, válido por 30 minutos; guardamos só o hash do token e da sessão.
-- O link do e-mail abre uma página com botão "Entrar", para leitores de e-mail não gastarem o link sozinhos.
-- Toda leitura e escrita passa por `src/lib/queries.ts`, que confere se a pessoa é membro ou organizadora.
-- Cada participante só vê o próprio par do sorteio. Nem o organizador vê os outros.
+- Links individuais longos e aleatórios; o resultado nunca vai na URL. `Referrer-Policy: no-referrer` evita vazar o link para lojas da lista de desejos.
+- O nome sorteado não vai no HTML: só é buscado quando a pessoa confirma que quer ver.
+- Toda leitura e escrita passa por `src/lib/queries.ts`, que resolve o token e confere o que cada um pode fazer.
+- Grupos antigos (do tempo do login por e-mail) continuam no banco: quem acessar `/grupos/...` é levado a "Perdi meu link" para receber os links novos.
