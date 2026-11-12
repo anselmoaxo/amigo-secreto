@@ -88,7 +88,14 @@ export function Reveal({ token, wishlist }: { token: string; wishlist: boolean }
               </div>
             )}
           </div>
-          {res.firstSeenAt && (
+          {res.otherDevice && (
+            <Notice tone="warn">
+              Este papelzinho já tinha sido aberto em outro aparelho
+              {res.firstSeenAt ? ` em ${new Date(res.firstSeenAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" })}` : ""}.
+              Se não foi você em outro celular ou computador, alguém com o seu link pode ter visto o resultado. Avise o organizador.
+            </Notice>
+          )}
+          {res.firstSeenAt && !res.otherDevice && (
             <p className="text-[0.95rem] text-muted">
               Este resultado foi aberto pela primeira vez em{" "}
               {new Date(res.firstSeenAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" })}.

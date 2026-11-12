@@ -210,3 +210,24 @@ function shuffle<T>(items: T[], rand: RandInt): T[] {
   }
   return out;
 }
+
+/**
+ * Confere o resultado antes de gravar (defesa extra, independente do algoritmo):
+ * todo mundo dá e recebe exatamente uma vez, ninguém tira a si mesmo e todas as regras valem.
+ * Lança erro se algo estiver errado; o sorteio não é gravado.
+ */
+export function assertValidPairs(people: Person[], rules: Rule[], pairs: Pair[]) {
+  const ids = new Set(people.map((p) => p.id));
+  const allowed = allowedMap(people, rules);
+  const givers = new Set<string>();
+  const receivers = new Set<string>();
+  for (const { giver, receiver } of pairs) {
+    if (!ids.has(giver) || !ids.has(receiver)) throw new Error("sorteio inválido: pessoa fora do grupo");
+    if (giver === receiver) throw new Error("sorteio inválido: alguém tirou a si mesmo");
+    if (givers.has(giver) || receivers.has(receiver)) throw new Error("sorteio inválido: pessoa repetida");
+    if (!allowed.get(giver)!.includes(receiver)) throw new Error("sorteio inválido: regra desrespeitada");
+    givers.add(giver);
+    receivers.add(receiver);
+  }
+  if (givers.size !== ids.size || receivers.size !== ids.size) throw new Error("sorteio inválido: alguém ficou de fora");
+}

@@ -1,4 +1,6 @@
 import { AppError } from "@/lib/queries";
+import { RateLimitError } from "@/lib/ratelimit";
+import { logError } from "@/lib/log";
 import type { Errors } from "@/lib/validation";
 
 /** Resposta padrão das ações de formulário. */
@@ -22,10 +24,22 @@ export async function guard(fn: () => Promise<ActionState>, fallback = "Algo deu
   try {
     return await fn();
   } catch (e) {
-    if (e instanceof AppError) return failed(e.message);
+    const known = knownError(e);
+    if (known) return failed(known);
     // redirect() e notFound() do Next usam exceções: deixamos passar.
     if (e && typeof e === "object" && "digest" in e && String((e as { digest: unknown }).digest).startsWith("NEXT_")) throw e;
-    console.error(e);
+    logError("ação", e);
     return failed(fallback);
   }
+}
+
+/**
+ * Mensagem para erros esperados (regra do app, limite de uso, trava do banco).
+ * null para o resto, que vira mensagem genérica: nada de SQL, stack trace ou dado interno na resposta.
+ */
+export function knownError(e: unknown): string | null {
+  if (e instanceof AppError || e instanceof RateLimitError) return e.message;
+  // Trava do banco (trigger participants_guard_drawn): o grupo foi sorteado no meio do caminho.
+  if ((e as { code?: string })?.code === "P0001") return "O sorteio deste grupo já foi feito. Recarregue a página para ver a situação atual.";
+  return null;
 }

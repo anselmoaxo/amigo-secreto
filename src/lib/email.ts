@@ -1,10 +1,11 @@
 import { siteUrl } from "./format";
+import { devLog, logError } from "./log";
 
 /** Envia e-mail pelo Resend. Sem RESEND_API_KEY, só registra no log. Retorna false se o envio falhar. */
 export async function sendEmail(to: string, subject: string, html: string, devLink?: string): Promise<boolean> {
   const key = process.env.RESEND_API_KEY;
   if (!key) {
-    console.log(`[e-mail desativado] para ${to}: ${subject}${devLink ? `\n  link: ${devLink}` : ""}`);
+    devLog(`[e-mail desativado] para ${to}: ${subject}${devLink ? `\n  link: ${devLink}` : ""}`);
     return true;
   }
   try {
@@ -19,12 +20,13 @@ export async function sendEmail(to: string, subject: string, html: string, devLi
       }),
     });
     if (!res.ok) {
-      console.error("Falha ao enviar e-mail", res.status, await res.text());
+      // Só o status: o corpo da resposta pode repetir destinatário e conteúdo (com o link pessoal).
+      console.error("Falha ao enviar e-mail", res.status);
       return false;
     }
     return true;
   } catch (e) {
-    console.error("Falha ao enviar e-mail", e);
+    logError("e-mail", e);
     return false;
   }
 }

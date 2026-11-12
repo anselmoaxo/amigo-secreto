@@ -1,16 +1,14 @@
 "use server";
 
+import crypto from "node:crypto";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import * as q from "@/lib/queries";
 import { sendPersonalInvite } from "@/lib/notify";
 import { cleanPerson, isEmail, normalizePhone, validatePerson } from "@/lib/validation";
-import { bool, done, failed, guard, text, type ActionState } from "./state";
-
-async function me(token: string) {
-  const res = await q.getByAccessToken(token);
-  if (!res) throw new q.AppError("Este link não funciona mais. Peça um novo ao organizador.");
-  return res;
-}
+import { limitIp, limitResource, participantFromToken as me } from "@/lib/access";
+import { logError } from "@/lib/log";
+import { bool, done, failed, guard, knownError, text, type ActionState } from "./state";
 
 const refresh = (token: string) => revalidatePath(`/p/${token}`);
 
@@ -23,11 +21,14 @@ export async function joinAction(_: JoinState, form: FormData): Promise<JoinStat
   if (Object.keys(errors).length) return failed("Confira os campos destacados.", errors);
   if (!bool(form, "consent")) return failed("Para entrar, confirme que leu como usamos seus dados.", { consent: "Marque para continuar." });
   const result = await guard(async () => {
-    const token = await q.joinByInvite(text(form, "code", 40), cleanPerson(person));
+    const code = text(form, "code", 40);
+    await limitIp("joinPerIp");
+    await limitResource("joinPerInvite", code, 1, "Muita gente entrando neste grupo agora. Espere alguns minutos e tente de novo.");
+    const token = await q.joinByInvite(code, cleanPerson(person));
     if (person.email) {
       // Manda o link para a pessoa guardar; se o e-mail falhar, ela continua com o link na tela.
       const res = await q.getByAccessToken(token);
-      if (res) await sendPersonalInvite(res.me, res.group, token).catch((e) => console.error(e));
+      if (res) await sendPersonalInvite(res.me, res.group, token).catch((e) => logError("convite", e));
     }
     return { ...done("Você entrou no grupo."), token } as JoinState;
   });
@@ -70,7 +71,10 @@ export async function addWishAction(_: ActionState, form: FormData): Promise<Act
   if (link) {
     try {
       const u = new URL(link);
-      if (!u.hostname.includes(".")) throw new Error();
+      // Só http(s), com domínio de verdade e sem usuário/senha no endereço (truque comum de phishing).
+      if (!/^https?:$/.test(u.protocol) || !u.hostname.includes(".") || u.username || u.password) throw new Error();
+      link = u.toString();
+      if (link.length > 500) throw new Error();
     } catch {
       return failed("O link não parece válido.", { link: "Cole o endereço completo da loja ou deixe em branco." });
     }
@@ -106,7 +110,7 @@ export async function preferencesAction(_: ActionState, form: FormData): Promise
 }
 
 export type RevealResult =
-  | { ok: true; name: string; firstSeenAt: string | null; preferences: string | null; wishes: q.Wish[] }
+  | { ok: true; name: string; firstSeenAt: string | null; otherDevice: boolean; preferences: string | null; wishes: q.Wish[] }
   | { ok: false; error: string };
 
 /**
@@ -119,17 +123,39 @@ export async function revealAction(token: string): Promise<RevealResult> {
     if (group.status !== "drawn") return { ok: false, error: "O sorteio ainda não foi feito." };
     const match = await q.getMyMatch(p, group);
     if (!match) return { ok: false, error: "Você não entrou neste sorteio. Fale com o organizador." };
-    await q.markSeen(p);
+    const { otherDevice } = await q.markSeen(p, await deviceHash(p.id));
     return {
       ok: true,
       name: match.name,
       firstSeenAt: match.firstSeenAt ? match.firstSeenAt.toISOString() : null,
+      otherDevice,
       preferences: match.preferences,
       wishes: match.wishes,
     };
   } catch (e) {
-    if (e instanceof q.AppError) return { ok: false, error: e.message };
-    console.error(e);
+    const known = knownError(e);
+    if (known) return { ok: false, error: known };
+    logError("resultado", e);
     return { ok: false, error: "Não conseguimos buscar seu resultado. Confira sua internet e tente de novo." };
+  }
+}
+
+/**
+ * Identificador deste aparelho para o resultado (cookie aleatório, HttpOnly, só no caminho /p).
+ * Não identifica a pessoa: serve só para avisar "este papelzinho foi aberto antes em outro aparelho".
+ */
+async function deviceHash(participantId: string) {
+  try {
+    const jar = await cookies();
+    let id = jar.get("papel_aparelho")?.value;
+    if (!id || !/^[A-Za-z0-9_-]{22,64}$/.test(id)) {
+      id = crypto.randomBytes(16).toString("base64url");
+      jar.set("papel_aparelho", id, {
+        httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "strict", path: "/p", maxAge: 60 * 60 * 24 * 400,
+      });
+    }
+    return crypto.createHash("sha256").update(`${participantId}|${id}`).digest("hex");
+  } catch {
+    return null;
   }
 }

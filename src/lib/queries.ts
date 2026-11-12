@@ -1,6 +1,7 @@
 import "server-only";
+import type postgres from "postgres";
 import { sql } from "./db";
-import { checkDraw, drawPairs, type DrawProblem, type RandInt, secureRandInt } from "./draw";
+import { assertValidPairs, checkDraw, drawPairs, type DrawProblem, type RandInt, secureRandInt } from "./draw";
 import { decryptToken, hashToken, issueToken, looksLikeToken, newInviteCode } from "./tokens";
 import { todayBR, type CleanGroup, type CleanPerson } from "./validation";
 
@@ -63,6 +64,27 @@ const GROUP_COLS = sql`g.id, g.name, g.occasion, to_char(g.event_date, 'YYYY-MM-
 const PERSON_COLS = sql`p.id, p.group_id, p.display_name, p.email, p.phone, p.status, p.team, p.preferences,
   p.is_organizer, p.invite_sent_at,
   exists(select 1 from assignments a where a.giver_id = p.id and a.seen_at is not null) as revealed`;
+
+type Tx = postgres.TransactionSql;
+
+/**
+ * Trava o grupo até o fim da transação e devolve o estado atual dele.
+ * Toda mudança que depende do estado (sorteado ou não, lista aberta ou não) passa por aqui:
+ * o objeto `group` recebido do token pode estar desatualizado se outra requisição mudou o grupo.
+ */
+async function lockGroup(tx: Tx, groupId: string) {
+  const [g] = await tx<{ status: "open" | "drawn"; allow_changes: boolean }[]>`
+    select status, allow_changes from groups where id = ${groupId} for update`;
+  if (!g) throw new AppError("Este grupo não existe mais.");
+  return g;
+}
+
+const DRAWN_PEOPLE = "O sorteio já foi feito. Desfaça o sorteio antes de mudar os participantes.";
+const DRAWN_RULES = "Desfaça o sorteio antes de mudar as regras.";
+
+function assertOpen(g: { status: string }, message = DRAWN_PEOPLE) {
+  if (g.status === "drawn") throw new AppError(message);
+}
 
 // Criação ----------------------------------------------------------------------
 
@@ -151,7 +173,11 @@ export async function joinByInvite(code: string, p: CleanPerson) {
   if (closed) throw new AppError(closed);
   if (g.members >= MAX_PEOPLE) throw new AppError("Este grupo já está cheio.");
   return sql.begin(async (tx) => {
-    await tx`select id from groups where id = ${g.id} for update`;
+    const now = await lockGroup(tx, g.id);
+    const closedNow = inviteClosedReason({ ...g, status: now.status, allow_changes: now.allow_changes });
+    if (closedNow) throw new AppError(closedNow);
+    const [{ n }] = await tx<{ n: number }[]>`select count(*)::int as n from participants where group_id = ${g.id}`;
+    if (n >= MAX_PEOPLE) throw new AppError("Este grupo já está cheio.");
     const [dup] = await tx`
       select 1 from participants where group_id = ${g.id} and lower(display_name) = lower(${p.name})`;
     if (dup) throw new AppError("Já tem alguém com esse nome no grupo. Se for você, peça seu link ao organizador. Se não, use também o sobrenome.");
@@ -166,13 +192,15 @@ export async function joinByInvite(code: string, p: CleanPerson) {
 // Participante --------------------------------------------------------------
 
 export async function respond(me: Participant, group: Group, answer: "confirmed" | "declined") {
-  if (group.status === "drawn") throw new AppError("O sorteio já foi feito. Fale com o organizador se não puder mais participar.");
   if (answer === "declined" && me.is_organizer) throw new AppError("Para sair, desmarque sua participação na edição do grupo.");
-  await sql`update participants set status = ${answer}, responded_at = now() where id = ${me.id}`;
+  await sql.begin(async (tx) => {
+    assertOpen(await lockGroup(tx, group.id), "O sorteio já foi feito. Fale com o organizador se não puder mais participar.");
+    await tx`update participants set status = ${answer}, responded_at = now() where id = ${me.id} and group_id = ${group.id}`;
+  });
 }
 
 export async function updateMyContact(me: Participant, email: string | null, phone: string | null) {
-  await sql`update participants set email = ${email}, phone = ${phone} where id = ${me.id}`;
+  await sql`update participants set email = ${email}, phone = ${phone} where id = ${me.id} and group_id = ${me.group_id}`;
 }
 
 /** A lista de desejos aceita mudanças? */
@@ -216,7 +244,7 @@ export async function getMyMatch(me: Participant, group: Group) {
   const [row] = await sql<{ id: string; display_name: string; preferences: string | null; seen_at: Date | null }[]>`
     select r.id, r.display_name, r.preferences, a.seen_at from assignments a
     join participants r on r.id = a.receiver_id
-    where a.giver_id = ${me.id}`;
+    where a.giver_id = ${me.id} and a.group_id = ${group.id}`;
   if (!row) return null;
   return {
     name: row.display_name,
@@ -226,8 +254,18 @@ export async function getMyMatch(me: Participant, group: Group) {
   };
 }
 
-export async function markSeen(me: Participant) {
-  await sql`update assignments set seen_at = coalesce(seen_at, now()) where giver_id = ${me.id}`;
+/**
+ * Marca o resultado como visto e guarda (só na primeira vez) o hash do aparelho que abriu.
+ * Devolve se o resultado já tinha sido aberto em outro aparelho: o participante é avisado,
+ * porque quem tem o link (por exemplo, quem o repassou) consegue abri-lo antes dele.
+ */
+export async function markSeen(me: Participant, deviceHash: string | null = null) {
+  const [row] = await sql<{ prev: string | null }[]>`
+    update assignments a set seen_at = coalesce(a.seen_at, now()), seen_device_hash = coalesce(a.seen_device_hash, ${deviceHash})
+    from (select seen_device_hash from assignments where giver_id = ${me.id} for update) old
+    where a.giver_id = ${me.id}
+    returning old.seen_device_hash as prev`;
+  return { otherDevice: Boolean(row?.prev && deviceHash && row.prev !== deviceHash) };
 }
 
 // Organizador -----------------------------------------------------------------
@@ -242,6 +280,8 @@ export async function updateGroup(group: Group, g: CleanGroup) {
   // Ver os pares só pode ser desligado depois de criado, nunca ligado.
   const canSee = group.organizer_can_see_pairs && g.organizerCanSeePairs;
   await sql.begin(async (tx) => {
+    const now = await lockGroup(tx, group.id);
+    group = { ...group, status: now.status };
     await tx`
       update groups set name = ${g.name}, occasion = ${g.occasion}, event_date = ${g.eventDate}, event_time = ${g.eventTime},
         location = ${g.location}, min_value = ${g.minValue}, max_value = ${g.maxValue}, description = ${g.description},
@@ -270,15 +310,15 @@ export async function updateGroup(group: Group, g: CleanGroup) {
   });
 }
 
-function assertCanChangePeople(group: Group) {
-  if (group.status === "drawn") throw new AppError("O sorteio já foi feito. Desfaça o sorteio antes de mudar os participantes.");
+function assertCanChangePeople(group: { status: string; allow_changes: boolean }) {
+  assertOpen(group);
   if (!group.allow_changes) throw new AppError("Este grupo não permite mudar participantes. Você pode liberar isso em Editar grupo.");
 }
 
 export async function addParticipant(group: Group, p: CleanPerson) {
   assertCanChangePeople(group);
   return sql.begin(async (tx) => {
-    await tx`select id from groups where id = ${group.id} for update`;
+    assertCanChangePeople(await lockGroup(tx, group.id));
     const [{ n }] = await tx<{ n: number }[]>`select count(*)::int as n from participants where group_id = ${group.id}`;
     if (n >= MAX_PEOPLE) throw new AppError(`O limite é de ${MAX_PEOPLE} pessoas por grupo.`);
     const [dup] = await tx`select 1 from participants where group_id = ${group.id} and lower(display_name) = lower(${p.name})`;
@@ -292,21 +332,27 @@ export async function addParticipant(group: Group, p: CleanPerson) {
 }
 
 export async function updateParticipant(group: Group, participantId: string, p: CleanPerson) {
-  if (group.status === "drawn") throw new AppError("O sorteio já foi feito. Desfaça o sorteio antes de mudar os participantes.");
+  assertOpen(group);
   const target = await getParticipant(group, participantId);
-  const [dup] = await sql`
-    select 1 from participants where group_id = ${group.id} and id <> ${target.id} and lower(display_name) = lower(${p.name})`;
-  if (dup) throw new AppError(`Já existe "${p.name}" no grupo.`);
-  await sql`
-    update participants set display_name = ${p.name}, email = ${p.email}, phone = ${p.phone}, team = ${p.team}
-    where id = ${target.id}`;
+  await sql.begin(async (tx) => {
+    assertOpen(await lockGroup(tx, group.id));
+    const [dup] = await tx`
+      select 1 from participants where group_id = ${group.id} and id <> ${target.id} and lower(display_name) = lower(${p.name})`;
+    if (dup) throw new AppError(`Já existe "${p.name}" no grupo.`);
+    await tx`
+      update participants set display_name = ${p.name}, email = ${p.email}, phone = ${p.phone}, team = ${p.team}
+      where id = ${target.id} and group_id = ${group.id}`;
+  });
 }
 
 export async function removeParticipant(group: Group, participantId: string) {
   assertCanChangePeople(group);
   const target = await getParticipant(group, participantId);
   if (target.is_organizer) throw new AppError("Para sair do sorteio, desmarque sua participação em Editar grupo.");
-  await sql`delete from participants where id = ${target.id}`;
+  await sql.begin(async (tx) => {
+    assertCanChangePeople(await lockGroup(tx, group.id));
+    await tx`delete from participants where id = ${target.id} and group_id = ${group.id}`;
+  });
 }
 
 export async function getParticipant(group: Group, participantId: string) {
@@ -341,7 +387,7 @@ export async function adminToken(groupId: string): Promise<string> {
 export async function regenerateParticipantToken(group: Group, participantId: string) {
   const target = await getParticipant(group, participantId);
   const t = issueToken();
-  await sql`update participants set access_token_hash = ${t.hash}, access_token_enc = ${t.enc} where id = ${target.id}`;
+  await sql`update participants set access_token_hash = ${t.hash}, access_token_enc = ${t.enc} where id = ${target.id} and group_id = ${group.id}`;
   return t.token;
 }
 
@@ -359,36 +405,46 @@ export async function listExclusions(groupId: string) {
 }
 
 export async function addExclusion(group: Group, a: string, b: string, oneWay: boolean) {
-  if (group.status === "drawn") throw new AppError("Desfaça o sorteio antes de mudar as regras.");
+  assertOpen(group, DRAWN_RULES);
   if (!isUuid(a) || !isUuid(b)) throw new AppError("Escolha duas pessoas.");
   if (a === b) throw new AppError("Escolha duas pessoas diferentes. Ninguém tira a si mesmo, isso já é automático.");
-  const rows = await sql`select id from participants where group_id = ${group.id} and id in (${a}, ${b})`;
-  if (rows.length !== 2) throw new AppError("Pessoa não encontrada no grupo. Recarregue a página.");
-  const [dup] = await sql`
-    select 1 from exclusions where group_id = ${group.id}
-    and ((participant_a = ${a} and participant_b = ${b}) or (participant_a = ${b} and participant_b = ${a}))`;
-  if (dup) throw new AppError("Já existe uma regra entre essas duas pessoas. Remova a antiga para trocar.");
-  await sql`insert into exclusions (group_id, participant_a, participant_b, one_way) values (${group.id}, ${a}, ${b}, ${oneWay})`;
+  await sql.begin(async (tx) => {
+    assertOpen(await lockGroup(tx, group.id), DRAWN_RULES);
+    const rows = await tx`select id from participants where group_id = ${group.id} and id in (${a}, ${b})`;
+    if (rows.length !== 2) throw new AppError("Pessoa não encontrada no grupo. Recarregue a página.");
+    const [dup] = await tx`
+      select 1 from exclusions where group_id = ${group.id}
+      and ((participant_a = ${a} and participant_b = ${b}) or (participant_a = ${b} and participant_b = ${a}))`;
+    if (dup) throw new AppError("Já existe uma regra entre essas duas pessoas. Remova a antiga para trocar.");
+    await tx`insert into exclusions (group_id, participant_a, participant_b, one_way) values (${group.id}, ${a}, ${b}, ${oneWay})`;
+  });
 }
 
 export async function deleteExclusion(group: Group, id: string) {
-  if (group.status === "drawn") throw new AppError("Desfaça o sorteio antes de mudar as regras.");
+  assertOpen(group, DRAWN_RULES);
   if (!isUuid(id)) return;
-  await sql`delete from exclusions where id = ${id} and group_id = ${group.id}`;
+  await sql.begin(async (tx) => {
+    assertOpen(await lockGroup(tx, group.id), DRAWN_RULES);
+    await tx`delete from exclusions where id = ${id} and group_id = ${group.id}`;
+  });
 }
 
 export async function setTeam(group: Group, participantId: string, team: string | null) {
-  if (group.status === "drawn") throw new AppError("Desfaça o sorteio antes de mudar as regras.");
+  assertOpen(group, DRAWN_RULES);
   const target = await getParticipant(group, participantId);
-  await sql`update participants set team = ${team} where id = ${target.id}`;
+  await sql.begin(async (tx) => {
+    assertOpen(await lockGroup(tx, group.id), DRAWN_RULES);
+    await tx`update participants set team = ${team} where id = ${target.id} and group_id = ${group.id}`;
+  });
 }
 
 // Sorteio -------------------------------------------------------------------
 
-async function drawInput(groupId: string) {
-  const people = await sql<{ id: string; display_name: string; team: string | null }[]>`
+async function drawInput(groupId: string, db: Tx | typeof sql = sql) {
+  const people = await db<{ id: string; display_name: string; team: string | null }[]>`
     select id, display_name, team from participants where group_id = ${groupId} and status <> 'declined'`;
-  const rules = await listExclusions(groupId);
+  const rules = await db<Exclusion[]>`
+    select id, participant_a, participant_b, one_way from exclusions where group_id = ${groupId} order by id`;
   return {
     people,
     persons: people.map((p) => ({ id: p.id, team: p.team })),
@@ -426,28 +482,36 @@ export async function revealedCount(groupId: string) {
   return n;
 }
 
+export const ALREADY_DRAWN = "O sorteio já foi feito. Recarregue a página para ver a situação atual.";
+
 /**
- * Faz o sorteio. Se já houver sorteio e alguém já viu o resultado,
- * só refaz com force = true (o organizador confirmou que entende as consequências).
+ * Faz o sorteio, de forma atômica: o grupo fica travado, os participantes e regras são lidos
+ * dentro da mesma transação e o resultado é conferido antes de gravar.
+ *
+ * Idempotência: só sorteia de novo um grupo já sorteado se o pedido disser explicitamente
+ * que é um novo sorteio (redraw = true). Dois cliques em "Fazer o sorteio" ou duas abas
+ * abertas não trocam o resultado em silêncio. Se alguém já viu o resultado, ainda exige force.
  */
-export async function runDraw(group: Group, opts: { force?: boolean; rand?: RandInt } = {}) {
+export async function runDraw(group: Group, opts: { force?: boolean; redraw?: boolean; rand?: RandInt } = {}) {
   return sql.begin(async (tx) => {
-    await tx`select id from groups where id = ${group.id} for update`;
+    const now = await lockGroup(tx, group.id);
+    if (now.status === "drawn" && !opts.redraw) throw new AppError(ALREADY_DRAWN);
     const [{ seen }] = await tx<{ seen: number }[]>`
       select count(*)::int as seen from assignments where group_id = ${group.id} and seen_at is not null`;
     if (seen > 0 && !opts.force) {
       throw new AppError("Alguém já viu quem tirou. Para sortear de novo, confirme que entende que todos vão receber um resultado novo.");
     }
-    const { people, persons, rules } = await drawInput(group.id);
+    const { people, persons, rules } = await drawInput(group.id, tx);
     const res = drawPairs(persons, rules, opts.rand ?? secureRandInt);
     if (!res.ok) throw new DrawError(nameProblem(res.problem, people));
+    assertValidPairs(persons, rules, res.pairs);
 
     await tx`delete from assignments where group_id = ${group.id}`;
     for (const p of res.pairs) {
       await tx`insert into assignments (group_id, giver_id, receiver_id) values (${group.id}, ${p.giver}, ${p.receiver})`;
     }
-    await tx`update groups set status = 'drawn', drawn_at = now() where id = ${group.id}`;
-    return { redraw: group.status === "drawn", count: res.pairs.length };
+    await tx`update groups set status = 'drawn', drawn_at = now(), updated_at = now() where id = ${group.id}`;
+    return { redraw: now.status === "drawn", count: res.pairs.length };
   });
 }
 
@@ -460,6 +524,7 @@ export class DrawError extends AppError {
 /** Desfaz o sorteio e reabre o grupo. */
 export async function resetDraw(group: Group) {
   await sql.begin(async (tx) => {
+    await lockGroup(tx, group.id);
     await tx`delete from assignments where group_id = ${group.id}`;
     await tx`update groups set status = 'open', drawn_at = null where id = ${group.id}`;
   });

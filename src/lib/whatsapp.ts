@@ -1,3 +1,5 @@
+import { devLog, logError } from "./log";
+
 /**
  * Envio de WhatsApp pela Evolution API (v2).
  * Sem EVOLUTION_API_URL / EVOLUTION_API_KEY / EVOLUTION_INSTANCE, só registra no log.
@@ -19,7 +21,8 @@ export async function sendWhatsApp(phone: string | null, text: string) {
   const key = process.env.EVOLUTION_API_KEY;
   const instance = process.env.EVOLUTION_INSTANCE;
   if (!base || !key || !instance) {
-    console.log(`[whatsapp desativado] para ${number}: ${text}`);
+    // Em produção o texto vai para o log sem o token do link (devLog tira).
+    devLog(`[whatsapp desativado] para ${number}: ${text}`);
     return;
   }
   try {
@@ -28,8 +31,8 @@ export async function sendWhatsApp(phone: string | null, text: string) {
       headers: { apikey: key, "Content-Type": "application/json" },
       body: JSON.stringify({ number, text }),
     });
-    if (!res.ok) console.error("Falha no WhatsApp", res.status, await res.text());
+    if (!res.ok) console.error("Falha no WhatsApp", res.status);
   } catch (e) {
-    console.error("Falha no WhatsApp", e);
+    logError("whatsapp", e);
   }
 }
