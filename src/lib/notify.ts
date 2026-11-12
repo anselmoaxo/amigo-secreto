@@ -1,5 +1,5 @@
 import "server-only";
-import { escapeHtml, sendEmail } from "./email";
+import { emailButton, emailLayout, escapeHtml, sendEmail } from "./email";
 import { sendWhatsApp } from "./whatsapp";
 import { formatDate, priceRange, siteUrl } from "./format";
 import type { Group } from "./queries";
@@ -43,12 +43,14 @@ export function personalInviteText(name: string, g: Group, token: string) {
     .join("\n");
 }
 
-const button = (url: string, label: string) =>
-  `<p style="margin:24px 0"><a href="${url}" style="background:#0F4D3A;color:#fff;padding:12px 20px;border-radius:999px;text-decoration:none;font-weight:600">${label}</a></p>`;
+const button = emailButton;
 
-const wrap = (body: string) =>
-  `<div style="font-family:Arial,sans-serif;font-size:16px;line-height:1.5;color:#1E2A24;max-width:520px">${body}
-<p style="font-size:13px;color:#5B6B62">Este link é pessoal. Quem tiver o link consegue ver o que está nele, então não repasse.</p></div>`;
+const wrap = (body: string, preheader: string) =>
+  emailLayout({
+    preheader,
+    body,
+    footer: "Este link é pessoal. Quem tiver o link consegue ver o que está nele, então não repasse.",
+  });
 
 /** Envia o link individual por e-mail e, se configurado, pelo WhatsApp do servidor. */
 export async function sendPersonalInvite(p: { display_name: string; email: string | null; phone: string | null }, g: Group, token: string) {
@@ -62,7 +64,7 @@ export async function sendPersonalInvite(p: { display_name: string; email: strin
 <p>${escapeHtml(g.organizer_name ?? "O organizador")} incluiu você no amigo secreto <strong>${escapeHtml(g.name)}</strong>.</p>
 <p>${escapeHtml(details(g)).replace(/\n/g, "<br>")}</p>
 <p>Pelo seu link você confirma presença, monta sua lista de desejos e, depois do sorteio, vê quem tirou.</p>
-${button(url, "Abrir meu link")}`),
+${button(url, "Abrir meu link")}`, `Seu convite para o amigo secreto "${g.name}"`),
       url,
     );
     channels.push("email");
@@ -83,7 +85,7 @@ export async function sendDrawNotice(p: { display_name: string; email: string | 
       `🎁 ${redraw ? "Sorteio refeito" : "Sorteio feito"}: ${g.name}`,
       wrap(`<p>Oi, ${escapeHtml(p.display_name)}!</p>
 <p>${intro} Abra seu link num lugar reservado para ver quem você tirou no amigo secreto <strong>${escapeHtml(g.name)}</strong>.</p>
-${button(url, "Ver quem eu tirei")}`),
+${button(url, "Ver quem eu tirei")}`, `${intro} Veja quem você tirou.`),
       url,
     );
   }
@@ -98,7 +100,7 @@ export async function sendReminder(p: { display_name: string; email: string | nu
       `⏰ Amanhã tem amigo secreto: ${p.group_name}`,
       wrap(`<p>Oi, ${escapeHtml(p.display_name)}!</p>
 <p>Amanhã é o amigo secreto <strong>${escapeHtml(p.group_name)}</strong>. Já comprou o presente?</p>
-${button(url, "Ver quem eu tirei e a lista de desejos")}`),
+${button(url, "Ver quem eu tirei e a lista de desejos")}`, `Amanhã é o amigo secreto ${p.group_name}`),
       url,
     );
   }
@@ -112,7 +114,7 @@ export async function sendOrganizerLinks(email: string, g: { name: string }, adm
     wrap(`<p>Seu grupo <strong>${escapeHtml(g.name)}</strong> foi criado. Guarde este e-mail.</p>
 <p><strong>Painel do organizador</strong>: convide pessoas, defina regras e faça o sorteio.</p>
 ${button(adminUrl(adminToken), "Abrir painel do organizador")}
-${myToken ? `<p><strong>Seu link de participante</strong>: onde você vê quem tirou.</p>${button(participantUrl(myToken), "Abrir meu link de participante")}` : ""}`),
+${myToken ? `<p><strong>Seu link de participante</strong>: onde você vê quem tirou.</p>${button(participantUrl(myToken), "Abrir meu link de participante")}` : ""}`, `Seu grupo ${g.name} foi criado`),
     adminUrl(adminToken),
   );
 }
@@ -125,5 +127,5 @@ export async function sendRecoveredLinks(
     ...links.admin.map((l) => `<li>Painel do organizador de <strong>${escapeHtml(l.name)}</strong>: <a href="${adminUrl(l.token)}">abrir</a></li>`),
     ...links.participant.map((l) => `<li>Seu link em <strong>${escapeHtml(l.name)}</strong>: <a href="${participantUrl(l.token)}">abrir</a></li>`),
   ];
-  await sendEmail(email, "🎁 Seus links do Amigo Secreto", wrap(`<p>Aqui estão os links ligados a este e-mail:</p><ul>${items.join("")}</ul>`));
+  await sendEmail(email, "🎁 Seus links do Amigo Secreto", wrap(`<p>Aqui estão os links ligados a este e-mail:</p><ul>${items.join("")}</ul>`, "Os links ligados a este e-mail"));
 }
