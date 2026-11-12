@@ -123,9 +123,10 @@ export async function sendRecoveredLinks(
   email: string,
   links: { admin: { name: string; token: string }[]; participant: { name: string; token: string }[] },
 ) {
+  // Um botão por link: mais fácil de tocar no celular do que um "abrir" no meio do texto.
   const items = [
-    ...links.admin.map((l) => `<li>Painel do organizador de <strong>${escapeHtml(l.name)}</strong>: <a href="${adminUrl(l.token)}">abrir</a></li>`),
-    ...links.participant.map((l) => `<li>Seu link em <strong>${escapeHtml(l.name)}</strong>: <a href="${participantUrl(l.token)}">abrir</a></li>`),
+    ...links.admin.map((l) => `<p style="margin:20px 0 0">Painel do organizador de <strong>${escapeHtml(l.name)}</strong></p>${button(adminUrl(l.token), "Abrir painel do organizador")}`),
+    ...links.participant.map((l) => `<p style="margin:20px 0 0">Seu link em <strong>${escapeHtml(l.name)}</strong></p>${button(participantUrl(l.token), "Ver meu amigo secreto")}`),
   ];
-  await sendEmail(email, "🎁 Seus links do Amigo Secreto", wrap(`<p>Aqui estão os links ligados a este e-mail:</p><ul>${items.join("")}</ul>`, "Os links ligados a este e-mail"));
+  await sendEmail(email, "🎁 Seus links do Amigo Secreto", wrap(`<p>Aqui estão os links ligados a este e-mail:</p>${items.join("")}`, "Os links ligados a este e-mail"));
 }
