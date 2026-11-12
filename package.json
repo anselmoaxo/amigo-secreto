@@ -12,7 +12,7 @@
     "vercel-build": "node scripts/migrate.mjs --se-configurado && next build"
   },
   "dependencies": {
-    "next": "15.5.4",
+    "next": "^15.5.29",
     "postgres": "^3.4.7",
     "react": "19.1.0",
     "react-dom": "19.1.0",
@@ -25,7 +25,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "15.5.4",
+    "eslint-config-next": "^15.5.29",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^3.2.4"
