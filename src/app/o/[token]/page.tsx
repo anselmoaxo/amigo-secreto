@@ -13,6 +13,7 @@ import { formatDate } from "@/lib/format";
 import { adminUrl, emailEnabled, groupInviteText, inviteUrl, participantUrl } from "@/lib/notify";
 import * as q from "@/lib/queries";
 import { todayBR } from "@/lib/validation";
+import { MIN_PEOPLE } from "@/lib/draw";
 import { DrawPanel } from "./DrawPanel";
 import { PersonRow } from "./PersonRow";
 
@@ -104,20 +105,13 @@ export default async function OrganizerPage({
       </GroupTag>
 
       {/* Situação geral */}
-      <section aria-label="Resumo" className="space-y-4">
-        <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-line bg-line sm:grid-cols-4">
-          {[
-            ["Participantes", count.total],
-            ["Confirmaram", count.confirmed],
-            ["Não responderam", count.pending],
-            ["Sorteio", drawn ? "Feito" : "Pendente"],
-          ].map(([k, v]) => (
-            <div key={k} className="bg-sheet px-4 py-3">
-              <dt className="text-[0.95rem] text-muted">{k}</dt>
-              <dd className={`text-2xl font-extrabold ${k === "Sorteio" && drawn ? "text-pine" : "text-ink"}`}>{v}</dd>
-            </div>
-          ))}
-        </dl>
+      <section aria-label="Andamento do amigo secreto" className="space-y-4">
+        <Progress steps={[
+          { title: "Convidar", detail: `${count.total} ${count.total === 1 ? "pessoa" : "pessoas"} no grupo`, done: drawn || count.total >= MIN_PEOPLE, href: canChange ? "#convidar" : "#participantes" },
+          { title: "Confirmar", detail: `${count.confirmed} de ${count.total} confirmaram`, done: drawn || count.pending === 0, href: "#participantes", bar: count.total ? count.confirmed / count.total : 0 },
+          { title: "Sortear", detail: drawn ? "Sorteio feito" : "Ainda não sorteado", done: drawn, href: "#sorteio" },
+          { title: "Cada um vê o seu", detail: drawn ? `${revealed} de ${count.total} já viram` : "Depois do sorteio", done: drawn && revealed >= count.total, href: "#participantes", bar: drawn && count.total ? revealed / count.total : undefined },
+        ]} />
         {warnings.map((w, i) => <Notice key={i} tone="warn">{w}</Notice>)}
         {count.declined > 0 && <p className="text-muted">{count.declined} {count.declined === 1 ? "pessoa avisou que não vai" : "pessoas avisaram que não vão"} e não {count.declined === 1 ? "entra" : "entram"} no sorteio.</p>}
       </section>
@@ -249,5 +243,41 @@ function PersonSelect({ id, name, label, people }: { id: string; name: string; l
         {people.map((p) => <option key={p.id} value={p.id}>{p.display_name}</option>)}
       </select>
     </div>
+  );
+}
+
+type Step = { title: string; detail: string; done: boolean; href: string; bar?: number };
+
+/** Andamento em quatro etapas, na ordem em que acontecem; a etapa atual leva para a seção onde se age. */
+function Progress({ steps }: { steps: Step[] }) {
+  const current = steps.findIndex((s) => !s.done);
+  return (
+    <ol className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      {steps.map((s, i) => {
+        const now = i === current;
+        return (
+          <li key={s.title}>
+            <a href={s.href} aria-current={now ? "step" : undefined}
+              className={`flex h-full flex-col gap-1 rounded-xl px-3.5 py-3 ${now ? "bg-sheet ring-2 ring-pine" : s.done ? "bg-pine-soft/60" : "bg-sheet/60 ring-1 ring-line"}`}>
+              <span className="flex items-center gap-2">
+                <span aria-hidden className={`hand flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[0.95rem] font-bold ${now ? "bg-pine text-white" : s.done ? "bg-pine text-white" : "bg-paper-deep text-muted"}`}>
+                  {s.done ? "✓" : i + 1}
+                </span>
+                <span className={`font-bold leading-tight ${now || s.done ? "text-pine" : "text-muted"}`}>{s.title}</span>
+              </span>
+              <span className={`text-[0.95rem] ${now ? "text-ink" : "text-muted"}`}>
+                {s.detail}
+                <span className="sr-only">{s.done ? " (concluído)" : now ? " (próximo passo)" : ""}</span>
+              </span>
+              {s.bar !== undefined && (
+                <span aria-hidden className="mt-auto block h-1.5 overflow-hidden rounded-full bg-paper-deep">
+                  <span className="block h-full rounded-full bg-pine" style={{ width: `${Math.round(s.bar * 100)}%` }} />
+                </span>
+              )}
+            </a>
+          </li>
+        );
+      })}
+    </ol>
   );
 }
