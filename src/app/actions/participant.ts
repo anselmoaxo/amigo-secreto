@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import * as q from "@/lib/queries";
 import { sendPersonalInvite } from "@/lib/notify";
-import { cleanPerson, isEmail, normalizePhone, validatePerson } from "@/lib/validation";
+import { cleanPerson, normalizePhone, validateContact, validatePerson } from "@/lib/validation";
 import { limitIp, limitResource, participantFromToken as me } from "@/lib/access";
 import { logError } from "@/lib/log";
 import { bool, done, failed, guard, knownError, text, type ActionState } from "./state";
@@ -50,9 +50,7 @@ export async function contactAction(_: ActionState, form: FormData): Promise<Act
   const token = text(form, "t", 80);
   const email = text(form, "email", 250);
   const phone = text(form, "phone", 40);
-  const fieldErrors: Record<string, string> = {};
-  if (email && !isEmail(email)) fieldErrors.email = "Confira o e-mail.";
-  if (phone && !normalizePhone(phone)) fieldErrors.phone = "Use DDD + número. Ex.: (11) 98765-4321";
+  const fieldErrors = validateContact(email, phone);
   if (Object.keys(fieldErrors).length) return failed("Confira os campos destacados.", fieldErrors);
   return guard(async () => {
     const { me: p } = await me(token);

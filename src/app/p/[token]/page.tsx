@@ -104,11 +104,11 @@ export default async function ParticipantPage({
       )}
 
       <Section id="contato" title="Avisos"
-        intro={`Opcional. Usamos só para mandar o aviso do sorteio, o lembrete na véspera da festa${group.event_date ? "" : " (quando ela tiver data)"} e seus links se você perder.${whatsappServerEnabled() ? "" : " Por enquanto, os avisos vão só por e-mail."}`}>
+        intro={`Mantenha pelo menos um contato: e-mail ou WhatsApp. Usamos só para mandar o aviso do sorteio, o lembrete na véspera da festa${group.event_date ? "" : " (quando ela tiver data)"} e seus links se você perder.${whatsappServerEnabled() ? "" : " Por enquanto, os avisos vão só por e-mail."}`}>
         <ActionForm action={contactAction} hidden={hidden} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
-            <TextField name="email" id="c-email" label="E-mail" optional type="email" inputMode="email" autoComplete="email" defaultValue={me.email ?? ""} />
-            <TextField name="phone" id="c-phone" label="WhatsApp" optional type="tel" inputMode="tel" autoComplete="tel" placeholder="(11) 98765-4321" defaultValue={me.phone ? formatPhone(me.phone) : ""} />
+            <TextField name="email" id="c-email" label="E-mail" autoCapitalize="off" spellCheck={false} type="email" inputMode="email" autoComplete="email" defaultValue={me.email ?? ""} />
+            <TextField name="phone" id="c-phone" label="WhatsApp" type="tel" inputMode="tel" autoComplete="tel" placeholder="(11) 98765-4321" defaultValue={me.phone ? formatPhone(me.phone) : ""} />
           </div>
           <Submit className="btn btn-ghost btn-sm">Salvar contato</Submit>
         </ActionForm>

@@ -66,8 +66,9 @@ export function PersonRow({ t, p, drawn, canChange }: { t: string; p: Row; drawn
         <ActionForm action={editPersonAction} hidden={{ t, id: p.id }} className="mt-3 space-y-3 rounded-xl bg-paper p-4" onSuccess={() => setMode("none")}>
           <TextField name="name" id={`e-${p.id}-name`} label="Nome" defaultValue={p.name} maxLength={60} required />
           <div className="grid gap-3 sm:grid-cols-2">
-            <TextField name="email" id={`e-${p.id}-email`} label="E-mail" optional type="email" defaultValue={p.email ?? ""} />
-            <TextField name="phone" id={`e-${p.id}-phone`} label="WhatsApp" optional type="tel" defaultValue={p.phone ? formatPhone(p.phone) : ""} />
+            <p className="text-[0.95rem] text-muted sm:col-span-2">Pelo menos um contato: e-mail ou WhatsApp.</p>
+            <TextField name="email" id={`e-${p.id}-email`} label="E-mail" type="email" autoCapitalize="off" spellCheck={false} defaultValue={p.email ?? ""} />
+            <TextField name="phone" id={`e-${p.id}-phone`} label="WhatsApp" type="tel" defaultValue={p.phone ? formatPhone(p.phone) : ""} />
           </div>
           <TextField name="team" id={`e-${p.id}-team`} label="Núcleo" optional hint="Quem tem o mesmo núcleo não se tira." defaultValue={p.team ?? ""} maxLength={40} list="nucleos" />
           <div className="flex gap-2">

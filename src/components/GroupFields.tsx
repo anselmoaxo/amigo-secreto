@@ -48,29 +48,32 @@ export function BasicsFields({ value: v, errors: e, set, editing, whatsapp = tru
  * os avisos do sorteio e o lembrete vão para quem está no sorteio.
  */
 function ContactFields({ value: v, errors: e, set, editing, whatsapp }: Props & { editing?: boolean; whatsapp: boolean }) {
-  const showPhone = whatsapp && v.organizerJoins;
+  // O WhatsApp do organizador fica guardado no participante dele, então só vale para quem participa.
+  const showPhone = v.organizerJoins;
   return (
-    <div role="group" aria-labelledby="contatos-titulo" className="space-y-4 rounded-xl border border-line bg-paper/70 p-4 sm:p-5">
+    <div role="group" aria-labelledby="contatos-titulo" aria-describedby="contatos-regra" className="space-y-4 rounded-xl border border-line bg-paper/70 p-4 sm:p-5">
       <div>
-        <p id="contatos-titulo" className="font-bold">Seus contatos <span className="font-normal text-muted">(opcionais)</span></p>
-        <p className="text-[0.95rem] text-muted">
-          {editing
-            ? "Usamos só para mandar os links deste grupo e os avisos."
-            : "Não precisa criar conta. Os contatos servem só para mandar os links deste grupo e os avisos."}
+        <p id="contatos-titulo" className="font-bold">Seu contato</p>
+        <p id="contatos-regra" className="text-[0.95rem] text-muted">
+          {showPhone
+            ? "Informe pelo menos um: e-mail ou WhatsApp. Não precisa criar conta; usamos só para mandar os links deste grupo e os avisos."
+            : "Como você só organiza, informe o e-mail: é por ele que o link do painel chega. Não precisa criar conta."}
         </p>
       </div>
 
-      <Field id="organizerEmail" label="Seu e-mail" optional error={e.organizerEmail}
+      <Field id="organizerEmail" label="Seu e-mail" error={e.organizerEmail}
         hint={editing
           ? "Com ele, se você perder o link do painel, recebe de novo em “Perdi meu link”."
-          : "Recomendado. Mandamos o link do seu painel para este e-mail e, se você perder, dá para pedir de novo em “Perdi meu link”. Sem e-mail, o painel fica salvo só neste aparelho."}>
+          : "Recomendado. Mandamos o link do seu painel para este e-mail e, se você perder, dá para pedir de novo em “Perdi meu link”."}>
         <input {...fieldProps("organizerEmail", e.organizerEmail, true)} className="input" type="email" inputMode="email"
           autoComplete="email" autoCapitalize="off" spellCheck={false} value={v.organizerEmail} onChange={(x) => set("organizerEmail", x.target.value)} />
       </Field>
 
       {showPhone && (
-        <Field id="organizerPhone" label="Seu WhatsApp" optional error={e.organizerPhone}
-          hint="Você recebe por WhatsApp o aviso quando o sorteio sair e um lembrete na véspera da festa, se ela tiver data.">
+        <Field id="organizerPhone" label="Seu WhatsApp" error={e.organizerPhone}
+          hint={whatsapp
+            ? "Você recebe por WhatsApp o aviso quando o sorteio sair e um lembrete na véspera da festa, se ela tiver data."
+            : "Para o grupo conseguir falar com você."}>
           <input {...fieldProps("organizerPhone", e.organizerPhone, true)} className="input" type="tel" inputMode="tel"
             autoComplete="tel" placeholder="(11) 98765-4321" value={v.organizerPhone} onChange={(x) => set("organizerPhone", x.target.value)} />
         </Field>

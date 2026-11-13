@@ -35,10 +35,11 @@ export function JoinForm({ code, groupName, whatsapp }: { code: string; groupNam
       <Field id="name" label="Seu nome" error={e.name} hint="Como as pessoas te conhecem. Se houver alguém com o mesmo nome, use o sobrenome.">
         <input {...fieldProps("name", e.name, true)} name="name" className="input" maxLength={60} autoComplete="name" required />
       </Field>
-      <Field id="email" label="Seu e-mail" optional error={e.email} hint="Para receber seu link e o aviso do sorteio. Com ele, você recupera o link em “Perdi meu link” se perder.">
+      <p className="font-bold">Seu contato <span className="font-normal text-muted">(pelo menos um: e-mail ou WhatsApp)</span></p>
+      <Field id="email" label="Seu e-mail" error={e.email} hint="Para receber seu link e o aviso do sorteio. Com ele, você recupera o link em “Perdi meu link” se perder.">
         <input {...fieldProps("email", e.email, true)} name="email" className="input" type="email" inputMode="email" autoComplete="email" autoCapitalize="off" spellCheck={false} />
       </Field>
-      <Field id="phone" label="Seu WhatsApp" optional error={e.phone}
+      <Field id="phone" label="Seu WhatsApp" error={e.phone}
         hint={whatsapp ? "Para receber seu link, o aviso do sorteio e o lembrete na véspera." : "Para o organizador falar com você, se precisar."}>
         <input {...fieldProps("phone", e.phone, true)} name="phone" className="input" type="tel" inputMode="tel" autoComplete="tel" placeholder="(11) 98765-4321" />
       </Field>

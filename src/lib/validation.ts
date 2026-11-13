@@ -50,6 +50,18 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 
+/** Toda pessoa precisa de pelo menos um contato: e-mail ou WhatsApp. */
+export const CONTACT_REQUIRED = "Informe o e-mail ou o WhatsApp (pelo menos um).";
+
+/** Confere o par e-mail/WhatsApp de uma pessoa (usado onde só o contato muda). */
+export function validateContact(email: string, phone: string): Errors {
+  const e: Errors = {};
+  if (email.trim() && !isEmail(email.trim())) e.email = "Confira o e-mail. Ex.: ana@gmail.com";
+  if (phone.trim() && !normalizePhone(phone)) e.phone = "Use DDD + número. Ex.: (11) 98765-4321";
+  if (!email.trim() && !phone.trim()) Object.assign(e, { email: CONTACT_REQUIRED, phone: CONTACT_REQUIRED });
+  return e;
+}
+
 export const isEmail = (s: string) => s.length <= 200 && EMAIL.test(s);
 
 /** Deixa só dígitos e põe o 55 do Brasil quando faltar. null se não parecer telefone. */
@@ -99,6 +111,11 @@ export function validateGroup(v: GroupInput, opts: { isNew?: boolean } = {}): Er
 
   if (v.organizerEmail.trim() && !isEmail(v.organizerEmail.trim())) e.organizerEmail = "Confira o e-mail. Ex.: ana@gmail.com";
   if (v.organizerPhone.trim() && !normalizePhone(v.organizerPhone)) e.organizerPhone = "Use DDD + número. Ex.: (11) 98765-4321";
+  // Pelo menos um contato. O WhatsApp do organizador só fica salvo se ele participa do sorteio.
+  if (!v.organizerEmail.trim() && !(v.organizerJoins && v.organizerPhone.trim())) {
+    if (v.organizerJoins) Object.assign(e, { organizerEmail: CONTACT_REQUIRED, organizerPhone: CONTACT_REQUIRED });
+    else e.organizerEmail = "Informe seu e-mail. Como você só organiza, é por ele que o link do painel chega.";
+  }
 
   if (v.eventDate && !validDate(v.eventDate)) e.eventDate = "Data inválida.";
   else if (v.eventDate && opts.isNew && v.eventDate < todayBR()) e.eventDate = "Essa data já passou.";
@@ -130,6 +147,7 @@ export function validatePerson(p: PersonInput): Errors {
   else if (name.length > 60) e.name = "Use até 60 caracteres.";
   if (p.email.trim() && !isEmail(p.email.trim())) e.email = "Confira o e-mail.";
   if (p.phone.trim() && !normalizePhone(p.phone)) e.phone = "Use DDD + número.";
+  if (!p.email.trim() && !p.phone.trim()) Object.assign(e, { email: CONTACT_REQUIRED, phone: CONTACT_REQUIRED });
   if (p.team.trim().length > 40) e.team = "Use até 40 caracteres.";
   return e;
 }
