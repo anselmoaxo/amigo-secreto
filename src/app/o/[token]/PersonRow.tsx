@@ -25,7 +25,7 @@ export function PersonRow({ t, p, drawn, canChange }: { t: string; p: Row; drawn
 
   return (
     <li className="py-4">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+      <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
           <p className="font-bold">
             {p.name}
@@ -35,29 +35,31 @@ export function PersonRow({ t, p, drawn, canChange }: { t: string; p: Row; drawn
             {[p.email, p.phone && formatPhone(p.phone), p.team && `Núcleo: ${p.team}`].filter(Boolean).join(" · ") || "Sem contato cadastrado"}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-        <span className={`rounded-full px-3 py-1 text-[0.9rem] font-semibold ${s.cls}`}>{s.label}</span>
-        {drawn && p.status !== "declined" && (
-          <span className={`rounded-full px-3 py-1 text-[0.9rem] font-semibold ${p.revealed ? "bg-pine text-white" : "bg-paper-deep text-muted"}`}>
-            {p.revealed ? "Já viu quem tirou" : "Ainda não viu"}
-          </span>
-        )}
+        <div className="flex shrink-0 flex-col items-end gap-1.5 sm:flex-row sm:items-center">
+          <span className={`whitespace-nowrap rounded-full px-3 py-1 text-[0.9rem] font-semibold ${s.cls}`}>{s.label}</span>
+          {drawn && p.status !== "declined" && (
+            <span className={`whitespace-nowrap rounded-full px-3 py-1 text-[0.9rem] font-semibold ${p.revealed ? "bg-pine text-white" : "bg-paper-deep text-muted"}`}>
+              {p.revealed ? "Já viu quem tirou" : "Ainda não viu"}
+            </span>
+          )}
         </div>
       </div>
 
-      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
-        {!p.isOrganizer && (
-          <button type="button" className="link py-1" aria-expanded={mode === "send"} onClick={() => toggle("send")}>
-            {p.inviteSent ? "Reenviar link" : "Enviar link"}
-          </button>
-        )}
-        {!drawn && (
-          <button type="button" className="link py-1" aria-expanded={mode === "edit"} onClick={() => toggle("edit")}>Editar</button>
-        )}
-        {!drawn && canChange && !p.isOrganizer && (
-          <button type="button" className="link link-danger py-1" aria-expanded={mode === "remove"} onClick={() => toggle("remove")}>Remover</button>
-        )}
-      </div>
+      {(!p.isOrganizer || !drawn) && (
+        <div className="mt-2.5 flex flex-wrap gap-2">
+          {!p.isOrganizer && (
+            <button type="button" className="btn btn-ghost btn-sm" aria-expanded={mode === "send"} onClick={() => toggle("send")}>
+              {p.inviteSent ? "Reenviar link" : "Enviar link"}
+            </button>
+          )}
+          {!drawn && (
+            <button type="button" className="btn btn-ghost btn-sm" aria-expanded={mode === "edit"} onClick={() => toggle("edit")}>Editar</button>
+          )}
+          {!drawn && canChange && !p.isOrganizer && (
+            <button type="button" className="btn btn-sm text-cherry hover:bg-cherry-soft" aria-expanded={mode === "remove"} onClick={() => toggle("remove")}>Remover</button>
+          )}
+        </div>
+      )}
 
       {mode === "send" && <SendPanel t={t} p={p} />}
       {mode === "edit" && (

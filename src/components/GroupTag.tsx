@@ -15,6 +15,7 @@ export function GroupTag({ group, children, showDescription = true }: { group: G
   ].filter(Boolean) as string[];
   return (
     <div className="tag">
+      <div aria-hidden className="tag-shape" />
       <p className="text-[0.95rem] font-semibold text-gold-ink">{occasionLabel(group.occasion)}</p>
       <h1 className="text-2xl font-extrabold leading-tight text-pine sm:text-3xl">{group.name}</h1>
       {facts.length > 0 && (

@@ -85,13 +85,13 @@ function SlipStack() {
         {names.map((n, i) => (
           <div
             key={n}
-            className="slip hand absolute flex h-20 w-36 items-center justify-center text-2xl font-bold text-pine/80"
+            className="slip slip-fold hand absolute flex h-20 w-36 items-center justify-center text-2xl font-bold text-pine/80"
             style={{ left: `${[0, 34, 62][i]}%`, top: `${[4, 20, 0][i]}%`, transform: `rotate(${[-8, 5, -4][i]}deg)` }}
           >
             {n}
           </div>
         ))}
-        <div className="slip absolute bottom-0 left-[12%] w-60 rotate-[3deg] px-6 py-5">
+        <div className="slip slip-fold absolute bottom-0 left-[12%] w-60 rotate-[3deg] px-6 py-5">
           <p className="text-[0.95rem] text-muted">Você tirou</p>
           <p className="hand text-5xl font-bold text-cherry">Bia</p>
           <p className="mt-2 border-t border-dashed border-line pt-2 text-[0.9rem] text-muted">Quer: livro de receitas, tamanho M</p>
